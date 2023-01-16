@@ -2,7 +2,4 @@
 .gradle
 target
 build
-gradle
 .DS_Store
-gradlew
-gradlew.bat
