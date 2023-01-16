@@ -1,6 +1,8 @@
 .idea
 .gradle
 target
-# Ignore Gradle build output directory
 build
+gradle
 .DS_Store
+gradlew
+gradlew.bat
