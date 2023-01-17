@@ -3,14 +3,14 @@
 @example
 Feature: Basic functionality
 
-  This feature is an example of the basic functionality of the Black Radish Framework
+  This feature is an example of the basic functionality
 
-  Rule: Working with thread
+  Rule: Thread
 
     Scenario: Wait example
       Given i wait '1' second
 
-  Rule: Working with variables
+  Rule: Variables
 
     Scenario: Examples of comparison operations
       Then '100' is '100'
@@ -29,7 +29,7 @@ Feature: Basic functionality
       And '200' is lower than '200.2'
       And '0xAF' is lower than '176'
 
-    Scenario: Example of working with variables
+    Scenario: An example of creating a variable
       Given i save 'example' in variable 'ONE'
       Then '${ONE}' is 'example'
 
@@ -71,7 +71,7 @@ Feature: Basic functionality
       And '${eval:1+2}' is '3'
       And '${eval:listOf(1, 2).joinToString("-")}' is '1-2'
 
-  Rule: Operators
+  Rule: Conditional operator
 
     Scenario: Examples of using if, elseif, else conditional statements
       #Note: condition is written in kotlin language
@@ -107,13 +107,13 @@ Feature: Basic functionality
       Then '${NUMBER}' is '2.0'
       * End If
 
-  Rule: Step generators
+  Rule: Step generation
 
     Scenario: An example of included a scenario from the current feature
       Given i save 'example_two' in variable 'ONE'
       Then '${ONE}' is 'example_two'
 
-      Given i include scenario 'Example of working with variables'
+      Given i include scenario 'An example of creating a variable'
       Then '${ONE}' is 'example'
 
     Scenario: An example of included a scenario from another feature

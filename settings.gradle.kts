@@ -2,5 +2,6 @@ rootProject.name = "black-radish"
 
 include(
     "core",
-    "command",
+    "modules:command",
+    "modules:ssh",
 )

@@ -18,6 +18,7 @@ import org.aspectj.lang.annotation.Around
 import org.aspectj.lang.annotation.Aspect
 import org.aspectj.lang.annotation.Before
 import org.aspectj.lang.annotation.Pointcut
+import org.assertj.core.api.Assertions
 import tech.mamontov.blackradish.core.utils.Logged
 import tech.mamontov.blackradish.core.utils.generator.step.IncludeGenerator
 import tech.mamontov.blackradish.core.utils.generator.step.OperationGenerator
@@ -74,6 +75,12 @@ open class GenerateAspect : Logged {
         }
 
         val step = Reflecation.get(jp.getThis(), "step") as Step
+
+        val errors = this.errors()
+        if (errors.containsKey(step.id)) {
+            Assertions.fail<Any>(errors[step.id])
+        }
+
         this.operationGenerator.proceed(jp.getThis(), step)
 
         if (!this.skipped().contains(step.id)) {
@@ -153,11 +160,8 @@ open class GenerateAspect : Logged {
         try {
             val id: String = (Reflecation.get(testStep, "step") as Step).id
 
-            val errors = this.errors()
             if (this.skipped().contains(id)) {
                 results[jp.getThis()] = Result(Status.SKIPPED, result.duration, result.error)
-            } else if (errors.containsKey(id)) {
-                results[jp.getThis()] = Result(Status.FAILED, result.duration, AssertionError(errors[id]))
             }
         } catch (_: NoSuchFieldException) {
             results[jp.getThis()] = Result(Status.SKIPPED, result.duration, result.error)

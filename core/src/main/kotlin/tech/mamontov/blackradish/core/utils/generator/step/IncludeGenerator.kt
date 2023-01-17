@@ -9,8 +9,8 @@ import tech.mamontov.blackradish.core.exceptions.IncludeDepthException
 import tech.mamontov.blackradish.core.exceptions.IncludeException
 import tech.mamontov.blackradish.core.exceptions.IncludeSkipException
 import tech.mamontov.blackradish.core.utils.Logged
-import tech.mamontov.blackradish.core.utils.data.StepInclude
-import tech.mamontov.blackradish.core.utils.property.Configuration
+import tech.mamontov.blackradish.core.data.StepInclude
+import tech.mamontov.blackradish.core.properties.ConfigurationProperty
 import tech.mamontov.blackradish.core.utils.reflecation.Reflecation
 import java.net.URI
 import java.net.URISyntaxException
@@ -103,8 +103,8 @@ class IncludeGenerator : Logged, StepGenerator() {
 
         this.fill(pickle, steps, pickle.name)
 
-        val settingDepth = Configuration.get(
-            Configuration.ASPECT_INCLUDE_DEPTH,
+        val settingDepth = ConfigurationProperty.get(
+            ConfigurationProperty.ASPECT_INCLUDE_DEPTH,
             10,
         )
         if (depth > settingDepth) {

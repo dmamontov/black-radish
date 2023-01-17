@@ -1,0 +1,7 @@
+version: '3'
+
+services:
+  openssh:
+    image: 'dmamontov/black-radish-openssh:1.0'
+    ports:
+      - 9022:2222

@@ -7,7 +7,7 @@ import org.testng.annotations.BeforeClass
 import org.testng.annotations.DataProvider
 import tech.mamontov.blackradish.core.cucumber.OptionsCucumber
 import tech.mamontov.blackradish.core.utils.Logged
-import tech.mamontov.blackradish.core.utils.property.ThreadProperty
+import tech.mamontov.blackradish.core.properties.ThreadProperty
 import tech.mamontov.blackradish.core.utils.reflecation.Reflecation
 import java.lang.reflect.Method
 

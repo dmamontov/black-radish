@@ -30,7 +30,7 @@ import tech.mamontov.blackradish.core.utils.formatter.OutputUtf8StreamWriter
 import tech.mamontov.blackradish.core.utils.formatter.TestSources
 import tech.mamontov.blackradish.core.utils.formatter.formats.Format
 import tech.mamontov.blackradish.core.utils.formatter.formats.Formats
-import tech.mamontov.blackradish.core.utils.property.Configuration
+import tech.mamontov.blackradish.core.properties.ConfigurationProperty
 import tech.mamontov.blackradish.core.utils.reflecation.Reflecation
 import java.io.BufferedReader
 import java.io.File
@@ -121,7 +121,7 @@ class Formatter(output: OutputStream) : Logged, ConcurrentEventListener, ColorAw
             this.printComments(event.testStep as PickleStepTestStep)
             this.printStep(event.testStep as PickleStepTestStep, event)
 
-            if (Configuration.get(Configuration.DEBUG_SHOW_TRACE, false)) {
+            if (ConfigurationProperty.get(ConfigurationProperty.DEBUG_SHOW_TRACE, false)) {
                 this.printStack(event.testStep as PickleStepTestStep)
             }
         }
@@ -345,7 +345,7 @@ class Formatter(output: OutputStream) : Logged, ConcurrentEventListener, ColorAw
             val status = result.status.name.lowercase(Locale.ROOT)
             var message = result.error.message!!.replace("\n", " ")
 
-            if (Configuration.get(Configuration.DEBUG_SHOW_STACKTRACE, false)) {
+            if (ConfigurationProperty.get(ConfigurationProperty.DEBUG_SHOW_STACKTRACE, false)) {
                 message = ExceptionUtils.printStackTrace(result.error)
             }
 

@@ -6,7 +6,7 @@ import org.apache.commons.lang3.math.NumberUtils
 import tech.mamontov.blackradish.core.aspects.ReplacementAspect
 import tech.mamontov.blackradish.core.enumerated.Token
 import tech.mamontov.blackradish.core.utils.Logged
-import tech.mamontov.blackradish.core.utils.data.ConditionStatus
+import tech.mamontov.blackradish.core.data.ConditionStatus
 import tech.mamontov.blackradish.core.utils.reflecation.Reflecation
 import java.util.UUID
 
