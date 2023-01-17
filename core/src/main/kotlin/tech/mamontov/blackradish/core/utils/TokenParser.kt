@@ -1,7 +1,7 @@
 package tech.mamontov.blackradish.core.utils
 
 import tech.mamontov.blackradish.core.enumerated.Token
-import tech.mamontov.blackradish.core.specs.base.BaseSpec
+import tech.mamontov.blackradish.core.specs.BaseSpec
 import java.util.Locale
 
 class TokenParser : Logged {

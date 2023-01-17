@@ -1,7 +1,8 @@
 package tech.mamontov.blackradish.core.specs
 
 import io.cucumber.testng.CucumberOptions
-import tech.mamontov.blackradish.core.cucumber.BaseTest
+import org.testng.annotations.DataProvider
+import tech.mamontov.blackradish.core.testng.BaseTest
 
 @CucumberOptions(
     features = [
@@ -9,4 +10,9 @@ import tech.mamontov.blackradish.core.cucumber.BaseTest
         "classpath:features/ru/base.feature",
     ],
 )
-class BaseSpecTest : BaseTest()
+class BaseSpecTest : BaseTest() {
+    @DataProvider(parallel = false)
+    override fun scenarios(): Array<Array<Any?>?>? {
+        return super.scenarios()
+    }
+}

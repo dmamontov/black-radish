@@ -1,15 +1,15 @@
-package tech.mamontov.blackradish.core.specs.base
+package tech.mamontov.blackradish.core.specs
 
 import io.cucumber.java.ru.Если
 import io.cucumber.java.ru.Иначе
 import io.cucumber.java.ru.Когда
 import io.cucumber.java.ru.Пусть
 import io.cucumber.java.ru.Тогда
+import tech.mamontov.blackradish.core.annotations.Glue
 import tech.mamontov.blackradish.core.enumerated.ComparisonOperation
 import tech.mamontov.blackradish.core.utils.Logged
-import tech.mamontov.blackradish.specs.Spec
 
-@Spec
+@Glue
 open class BaseRuSpec() : Logged, BaseSpec() {
     @Пусть("^[Я|я] жду '(\\d+)' секунд[ы|у]?$")
     override fun wait(seconds: Int) {

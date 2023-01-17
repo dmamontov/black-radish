@@ -1,13 +1,13 @@
-package tech.mamontov.blackradish.core.specs.base
+package tech.mamontov.blackradish.core.specs
 
 import io.cucumber.java.en.Given
 import io.cucumber.java.en.Then
 import io.cucumber.java.en.When
+import tech.mamontov.blackradish.core.annotations.Glue
 import tech.mamontov.blackradish.core.enumerated.ComparisonOperation
 import tech.mamontov.blackradish.core.utils.Logged
-import tech.mamontov.blackradish.specs.Spec
 
-@Spec
+@Glue
 class BaseEnSpec() : Logged, BaseSpec() {
     @When("^[I|i] wait '(\\d+)' second[s]?$")
     override fun wait(seconds: Int) {

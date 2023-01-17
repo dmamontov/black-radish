@@ -2,4 +2,4 @@ package tech.mamontov.blackradish.core.exceptions
 
 import io.cucumber.core.gherkin.Step
 
-class SkipException(val steps: MutableList<Step>) : Exception()
+class IncludeSkipException(val steps: MutableList<Step>) : Exception()

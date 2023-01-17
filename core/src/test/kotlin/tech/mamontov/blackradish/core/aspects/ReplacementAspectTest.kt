@@ -4,7 +4,7 @@ import org.assertj.core.api.Assertions
 import org.assertj.core.api.Assertions.assertThat
 import org.testng.annotations.Test
 import tech.mamontov.blackradish.core.plugins.ConfigurationLoader
-import tech.mamontov.blackradish.core.utils.property.ThreadConfiguration
+import tech.mamontov.blackradish.core.utils.property.Configuration
 
 class ReplacementAspectTest {
     @Test
@@ -60,7 +60,7 @@ class ReplacementAspectTest {
         System.setProperty("env", "test")
         ConfigurationLoader.load(
             arrayListOf("common", ReplacementAspect.replace("\${env}")),
-            ThreadConfiguration::add,
+            Configuration::add,
         )
 
         assertThat(ReplacementAspect.replace("\${FOUR}")).isEqualTo("4")

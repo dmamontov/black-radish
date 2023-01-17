@@ -20,13 +20,21 @@ abstract class StepGenerator : Logged {
         return this.match(pickle, step, Token.INCLUDE)
     }
 
-    protected fun getToken(pickle: Any, step: Step): Token {
+    protected fun getToken(pickle: Any, step: Step, retry: Int = 1): Token {
         val stepDefinition: StepDefinition =
             if (Reflecation.match(pickle, "io.cucumber.core.runner.PickleStepDefinitionMatch")) {
                 Reflecation.get(pickle, "stepDefinition") as StepDefinition
             } else {
-                val match = this.matcher?.call(pickle, step) ?: return Token.UNDEFINED
-                Reflecation.method(match, "getStepDefinition").call() as StepDefinition
+                try {
+                    val match = this.matcher?.call(pickle, step) ?: return Token.UNDEFINED
+                    Reflecation.method(match, "getStepDefinition").call() as StepDefinition
+                } catch (_: Exception) {
+                    if (retry >= 10) {
+                        return Token.UNDEFINED
+                    }
+
+                    return this.getToken(pickle, step, retry + 1)
+                }
             }
 
         return TokenParser.parse(stepDefinition.location)

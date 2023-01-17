@@ -1,4 +1,4 @@
-package tech.mamontov.blackradish.core.specs.base
+package tech.mamontov.blackradish.core.specs
 
 import org.apache.commons.lang3.math.NumberUtils
 import org.assertj.core.api.Assertions

@@ -11,7 +11,7 @@ import org.apache.commons.configuration2.ex.ConversionException
 import org.assertj.core.api.Assertions
 import tech.mamontov.blackradish.core.aspects.ReplacementAspect
 import tech.mamontov.blackradish.core.utils.Logged
-import tech.mamontov.blackradish.core.utils.property.ThreadConfiguration
+import tech.mamontov.blackradish.core.utils.property.Configuration
 import java.io.File
 import java.net.URISyntaxException
 
@@ -21,9 +21,9 @@ class ConfigurationLoader : Logged, ConcurrentEventListener {
         private const val ERROR_MESSAGE = "settings.properties: %s"
 
         private val settings: List<String> = listOf(
-            ThreadConfiguration.ASPECT_INCLUDE_DEPTH,
-            ThreadConfiguration.DEBUG_SHOW_TRACE,
-            ThreadConfiguration.DEBUG_SHOW_STACKTRACE,
+            Configuration.ASPECT_INCLUDE_DEPTH,
+            Configuration.DEBUG_SHOW_TRACE,
+            Configuration.DEBUG_SHOW_STACKTRACE,
         )
 
         fun load() {
@@ -34,7 +34,7 @@ class ConfigurationLoader : Logged, ConcurrentEventListener {
                 } catch (_: AssertionError) {
                 }
 
-                this.load(files, ThreadConfiguration::add)
+                this.load(files, Configuration::add)
             } catch (e: URISyntaxException) {
                 throw IllegalArgumentException(e.message, e)
             }
@@ -74,13 +74,13 @@ class ConfigurationLoader : Logged, ConcurrentEventListener {
             settings.forEach { setting: String ->
                 try {
                     when (setting) {
-                        ThreadConfiguration.ASPECT_INCLUDE_DEPTH -> Assertions.assertThat(
-                            ThreadConfiguration.get(setting, 10),
+                        Configuration.ASPECT_INCLUDE_DEPTH -> Assertions.assertThat(
+                            Configuration.get(setting, 10),
                         ).`as`(ERROR_MESSAGE, setting).isGreaterThan(1)
 
-                        ThreadConfiguration.DEBUG_SHOW_TRACE -> ThreadConfiguration.get(setting, false)
+                        Configuration.DEBUG_SHOW_TRACE -> Configuration.get(setting, false)
 
-                        ThreadConfiguration.DEBUG_SHOW_STACKTRACE -> ThreadConfiguration.get(setting, false)
+                        Configuration.DEBUG_SHOW_STACKTRACE -> Configuration.get(setting, false)
                     }
                 } catch (e: ConversionException) {
                     Assertions.fail<Any>(e.message)

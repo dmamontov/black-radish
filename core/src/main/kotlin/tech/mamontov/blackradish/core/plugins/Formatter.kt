@@ -30,7 +30,7 @@ import tech.mamontov.blackradish.core.utils.formatter.OutputUtf8StreamWriter
 import tech.mamontov.blackradish.core.utils.formatter.TestSources
 import tech.mamontov.blackradish.core.utils.formatter.formats.Format
 import tech.mamontov.blackradish.core.utils.formatter.formats.Formats
-import tech.mamontov.blackradish.core.utils.property.ThreadConfiguration
+import tech.mamontov.blackradish.core.utils.property.Configuration
 import tech.mamontov.blackradish.core.utils.reflecation.Reflecation
 import java.io.BufferedReader
 import java.io.File
@@ -121,7 +121,7 @@ class Formatter(output: OutputStream) : Logged, ConcurrentEventListener, ColorAw
             this.printComments(event.testStep as PickleStepTestStep)
             this.printStep(event.testStep as PickleStepTestStep, event)
 
-            if (ThreadConfiguration.get(ThreadConfiguration.DEBUG_SHOW_TRACE, false)) {
+            if (Configuration.get(Configuration.DEBUG_SHOW_TRACE, false)) {
                 this.printStack(event.testStep as PickleStepTestStep)
             }
         }
@@ -139,6 +139,7 @@ class Formatter(output: OutputStream) : Logged, ConcurrentEventListener, ColorAw
                     output.println(STEP_SCENARIO_INDENT + line)
                 }
             }
+        } catch (_: NullPointerException) {
         } catch (e: IOException) {
             throw CucumberException(e)
         }
@@ -336,7 +337,7 @@ class Formatter(output: OutputStream) : Logged, ConcurrentEventListener, ColorAw
 
     private fun printError(event: TestStepFinished) {
         val result = event.result
-        if (result.error === null) {
+        if (result.error === null || result.status === Status.SKIPPED) {
             return
         }
 
@@ -344,7 +345,7 @@ class Formatter(output: OutputStream) : Logged, ConcurrentEventListener, ColorAw
             val status = result.status.name.lowercase(Locale.ROOT)
             var message = result.error.message!!.replace("\n", " ")
 
-            if (ThreadConfiguration.get(ThreadConfiguration.DEBUG_SHOW_STACKTRACE, false)) {
+            if (Configuration.get(Configuration.DEBUG_SHOW_STACKTRACE, false)) {
                 message = ExceptionUtils.printStackTrace(result.error)
             }
 

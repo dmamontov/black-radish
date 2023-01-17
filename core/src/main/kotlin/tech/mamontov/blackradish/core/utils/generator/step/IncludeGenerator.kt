@@ -7,10 +7,10 @@ import io.cucumber.core.resource.ResourceScanner
 import io.cucumber.core.stepexpression.Argument
 import tech.mamontov.blackradish.core.exceptions.IncludeDepthException
 import tech.mamontov.blackradish.core.exceptions.IncludeException
-import tech.mamontov.blackradish.core.exceptions.SkipException
+import tech.mamontov.blackradish.core.exceptions.IncludeSkipException
 import tech.mamontov.blackradish.core.utils.Logged
 import tech.mamontov.blackradish.core.utils.data.StepInclude
-import tech.mamontov.blackradish.core.utils.property.ThreadConfiguration
+import tech.mamontov.blackradish.core.utils.property.Configuration
 import tech.mamontov.blackradish.core.utils.reflecation.Reflecation
 import java.net.URI
 import java.net.URISyntaxException
@@ -48,7 +48,7 @@ class IncludeGenerator : Logged, StepGenerator() {
             } catch (e: IncludeException) {
                 targetSteps += e.step
                 skippedTo = true
-            } catch (e: SkipException) {
+            } catch (e: IncludeSkipException) {
                 targetSteps += e.steps
                 skippedTo = true
             }
@@ -56,7 +56,7 @@ class IncludeGenerator : Logged, StepGenerator() {
 
         if (skippedTo) {
             if (depth > 1) {
-                throw SkipException(targetSteps)
+                throw IncludeSkipException(targetSteps)
             }
 
             return targetSteps
@@ -103,8 +103,8 @@ class IncludeGenerator : Logged, StepGenerator() {
 
         this.fill(pickle, steps, pickle.name)
 
-        val settingDepth = ThreadConfiguration.get(
-            ThreadConfiguration.ASPECT_INCLUDE_DEPTH,
+        val settingDepth = Configuration.get(
+            Configuration.ASPECT_INCLUDE_DEPTH,
             10,
         )
         if (depth > settingDepth) {

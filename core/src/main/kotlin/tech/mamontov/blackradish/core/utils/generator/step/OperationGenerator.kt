@@ -14,34 +14,40 @@ import java.util.UUID
 class OperationGenerator : Logged, StepGenerator() {
     private val texts: MutableMap<String, String> = mutableMapOf()
 
-    private val conditionStack: MutableList<ConditionStatus> = mutableListOf()
+    private val conditionStack: ThreadLocal<MutableList<ConditionStatus>> =
+        object : ThreadLocal<MutableList<ConditionStatus>>() {
+            override fun initialValue(): MutableList<ConditionStatus> {
+                return mutableListOf()
+            }
+        }
 
     fun proceed(pickle: Any, step: Step) {
-        when (val token = getToken(pickle, step)) {
+        val token = getToken(pickle, step)
+        when (token) {
             Token.IF -> {
-                if (conditionStack.isEmpty()) {
+                if (conditionStack.get().isEmpty()) {
                     val valid = this.validate(step.text)
-                    conditionStack.add(
+                    conditionStack.get().add(
                         ConditionStatus(token, valid, valid),
                     )
 
                     return
                 }
 
-                val valid = if (!this.conditionStack.last().proceed) {
+                val valid = if (!this.conditionStack.get().last().proceed) {
                     this.skipped.add(step.id)
                     false
                 } else {
                     this.validate(step.text)
                 }
 
-                conditionStack.add(
+                conditionStack.get().add(
                     ConditionStatus(
                         token,
                         valid,
                         valid,
-                        this.conditionStack.last().successful,
-                        this.conditionStack.last().proceed,
+                        this.conditionStack.get().last().successful,
+                        this.conditionStack.get().last().proceed,
                     ),
                 )
             }
@@ -50,25 +56,25 @@ class OperationGenerator : Logged, StepGenerator() {
                 val successful: Boolean
                 val proceed: Boolean
 
-                if (!this.conditionStack.last().parentProceed) {
+                if (!this.conditionStack.get().last().parentProceed) {
                     this.skipped.add(step.id)
                 }
 
                 if (this.isNotProceed()) {
-                    successful = this.conditionStack.last().successful
+                    successful = this.conditionStack.get().last().successful
                     proceed = false
                 } else if (Token.ELSE == token) {
-                    successful = !this.conditionStack.last().successful
+                    successful = !this.conditionStack.get().last().successful
                     proceed = successful
                 } else {
                     successful = this.validate(step.text)
                     proceed = successful
                 }
 
-                val last = this.conditionStack.last()
-                conditionStack.removeLast()
+                val last = this.conditionStack.get().last()
+                conditionStack.get().removeLast()
 
-                conditionStack.add(
+                conditionStack.get().add(
                     ConditionStatus(
                         token,
                         successful,
@@ -80,18 +86,14 @@ class OperationGenerator : Logged, StepGenerator() {
             }
 
             Token.ENDIF -> {
-                conditionStack.removeLast()
-
-                if (this.isSkipped()) {
-                    this.skipped.add(step.id)
-                }
+                conditionStack.get().removeLast()
             }
 
-            else -> {
-                if (this.isSkipped()) {
-                    this.skipped.add(step.id)
-                }
-            }
+            else -> {}
+        }
+
+        if (this.isSkipped() && listOf(Token.ENDIF, Token.UNDEFINED).contains(token)) {
+            this.skipped.add(step.id)
         }
     }
 
@@ -330,10 +332,10 @@ class OperationGenerator : Logged, StepGenerator() {
     }
 
     private fun isSkipped(): Boolean {
-        return this.conditionStack.isNotEmpty() && !this.conditionStack.last().proceed
+        return this.conditionStack.get().isNotEmpty() && !this.conditionStack.get().last().proceed
     }
 
     private fun isNotProceed(): Boolean {
-        return this.conditionStack.last().successful || !this.conditionStack.last().parentProceed
+        return this.conditionStack.get().last().successful || !this.conditionStack.get().last().parentProceed
     }
 }

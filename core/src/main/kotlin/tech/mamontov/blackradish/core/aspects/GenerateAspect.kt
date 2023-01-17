@@ -150,13 +150,17 @@ open class GenerateAspect : Logged {
     ) {
         val results = Reflecation.field(jp.getThis(), "result")
         val result = Reflecation.get(jp.getThis(), results) as Result
-        val id: String = (Reflecation.get(testStep, "step") as Step).id
+        try {
+            val id: String = (Reflecation.get(testStep, "step") as Step).id
 
-        val errors = this.errors()
-        if (this.skipped().contains(id)) {
+            val errors = this.errors()
+            if (this.skipped().contains(id)) {
+                results[jp.getThis()] = Result(Status.SKIPPED, result.duration, result.error)
+            } else if (errors.containsKey(id)) {
+                results[jp.getThis()] = Result(Status.FAILED, result.duration, AssertionError(errors[id]))
+            }
+        } catch (_: NoSuchFieldException) {
             results[jp.getThis()] = Result(Status.SKIPPED, result.duration, result.error)
-        } else if (errors.containsKey(id)) {
-            results[jp.getThis()] = Result(Status.FAILED, result.duration, AssertionError(errors[id]))
         }
     }
 

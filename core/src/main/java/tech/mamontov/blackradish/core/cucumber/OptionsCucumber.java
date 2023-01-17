@@ -3,7 +3,7 @@ package tech.mamontov.blackradish.core.cucumber;
 import io.cucumber.core.backend.ObjectFactory;
 import io.cucumber.testng.CucumberOptions;
 import org.reflections.Reflections;
-import tech.mamontov.blackradish.specs.Spec;
+import tech.mamontov.blackradish.core.annotations.Glue;
 
 import java.lang.annotation.Annotation;
 import java.util.Arrays;
@@ -17,9 +17,12 @@ public class OptionsCucumber implements CucumberOptions {
 
     private final String className;
 
-    public OptionsCucumber(@SuppressWarnings("rawtypes") Class clazz) {
+    private final Boolean parallel;
+
+    public OptionsCucumber(@SuppressWarnings("rawtypes") Class clazz, Boolean parallel) {
         this.cucumberOptionsAnnotation = (CucumberOptions) clazz.getAnnotation(CucumberOptions.class);
         this.className = clazz.getName();
+        this.parallel = parallel;
     }
 
     @Override
@@ -36,14 +39,7 @@ public class OptionsCucumber implements CucumberOptions {
     public String[] glue() {
         LinkedHashSet<String> glue = new LinkedHashSet<>(Arrays.asList(cucumberOptionsAnnotation.glue()));
 
-        Reflections reflections = new Reflections("tech.mamontov.blackradish");
-        Set<Class<?>> set = reflections.getTypesAnnotatedWith(Spec.class);
-
-        List<String> packages = set.stream()
-                .map(Class::getPackageName)
-                .distinct()
-                .toList();
-
+        List<String> packages = this.getPackages(Glue.class);
         if (!packages.isEmpty()) {
             glue.addAll(packages);
         }
@@ -109,5 +105,15 @@ public class OptionsCucumber implements CucumberOptions {
     @Override
     public Class<? extends Annotation> annotationType() {
         return null;
+    }
+
+    private List<String> getPackages(Class<? extends Annotation> clazz) {
+        Reflections reflections = new Reflections("tech.mamontov.blackradish");
+        Set<Class<?>> set = reflections.getTypesAnnotatedWith(clazz);
+
+        return set.stream()
+                .map(Class::getPackageName)
+                .distinct()
+                .toList();
     }
 }
