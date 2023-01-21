@@ -4,9 +4,9 @@ import io.cucumber.core.gherkin.Step
 import io.cucumber.core.stepexpression.Argument
 import org.apache.commons.lang3.math.NumberUtils
 import tech.mamontov.blackradish.core.aspects.ReplacementAspect
+import tech.mamontov.blackradish.core.data.ConditionStatus
 import tech.mamontov.blackradish.core.enumerated.Token
 import tech.mamontov.blackradish.core.utils.Logged
-import tech.mamontov.blackradish.core.data.ConditionStatus
 import tech.mamontov.blackradish.core.utils.reflecation.Reflecation
 import java.util.UUID
 

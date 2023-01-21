@@ -54,7 +54,7 @@ open class ReplacementAspect : Logged {
             try {
                 return this.substitutor.replace(element)
             } catch (e: Exception) {
-                Assertions.fail<Any>(e.message)
+                Assertions.fail<Any>(e.message, e)
             }
 
             return element

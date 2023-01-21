@@ -24,21 +24,19 @@ import io.cucumber.plugin.event.TestStep
 import io.cucumber.plugin.event.TestStepFinished
 import io.cucumber.plugin.event.WriteEvent
 import tech.mamontov.blackradish.core.aspects.ReplacementAspect
+import tech.mamontov.blackradish.core.properties.ConfigurationProperty
 import tech.mamontov.blackradish.core.utils.Logged
+import tech.mamontov.blackradish.core.utils.UriHelper
 import tech.mamontov.blackradish.core.utils.formatter.OutputAppendable
 import tech.mamontov.blackradish.core.utils.formatter.OutputUtf8StreamWriter
 import tech.mamontov.blackradish.core.utils.formatter.TestSources
 import tech.mamontov.blackradish.core.utils.formatter.formats.Format
 import tech.mamontov.blackradish.core.utils.formatter.formats.Formats
-import tech.mamontov.blackradish.core.properties.ConfigurationProperty
 import tech.mamontov.blackradish.core.utils.reflecation.Reflecation
 import java.io.BufferedReader
-import java.io.File
 import java.io.IOException
 import java.io.OutputStream
 import java.io.StringReader
-import java.net.URI
-import java.net.URISyntaxException
 import java.util.Locale
 import java.util.Optional
 import java.util.UUID
@@ -174,14 +172,14 @@ class Formatter(output: OutputStream) : Logged, ConcurrentEventListener, ColorAw
 
         var featureOptional: Optional<Feature>? = null
         try {
-            featureOptional = this.sources.feature(URI(this.file.toString()))
-        } catch (e: URISyntaxException) {
+            featureOptional = this.sources.feature(UriHelper.uri(this.file.toString()))
+        } catch (e: Exception) {
             logger.error(
                 "Error getting feature document from " + this.file + ". " + e.message,
             )
         }
 
-        output.println(this.format(this.relativize(case.uri).schemeSpecificPart))
+        output.println(this.format(UriHelper.relativize(case.uri).schemeSpecificPart))
 
         if (featureOptional === null || featureOptional.isEmpty) {
             return
@@ -212,7 +210,7 @@ class Formatter(output: OutputStream) : Logged, ConcurrentEventListener, ColorAw
 
         output.println(
             SCENARIO_INDENT + definition + indent(case, SCENARIO_INDENT + definition).trimEnd() + " " + this.format(
-                this.relativize(case.uri).schemeSpecificPart + ":" + case.location.line,
+                UriHelper.relativize(case.uri).schemeSpecificPart + ":" + case.location.line,
             ),
         )
     }
@@ -253,7 +251,7 @@ class Formatter(output: OutputStream) : Logged, ConcurrentEventListener, ColorAw
 
         var location = ""
         if (event.result.status === Status.FAILED) {
-            location = " # " + this.relativize(step.uri).schemeSpecificPart + ":" + step.step.location.line
+            location = " # " + UriHelper.relativize(step.uri).schemeSpecificPart + ":" + step.step.location.line
         }
 
         output.println(
@@ -269,10 +267,10 @@ class Formatter(output: OutputStream) : Logged, ConcurrentEventListener, ColorAw
                         output.println(TABLES_INDENT + formats.get(statusName).text("\"\"\""))
 
                         try {
-                            output.println(
-                                TABLES_INDENT + formats.get(statusName)
-                                    .text(Reflecation.get(argument, "content") as String),
-                            )
+                            (Reflecation.get(argument, "content") as String).split(System.lineSeparator())
+                                .dropLastWhile { it.isEmpty() }.forEach { line: String ->
+                                    output.println(TABLES_INDENT + formats.get(statusName).text(line))
+                                }
                         } catch (e: Exception) {
                             output.println(TABLES_INDENT + formats.get(statusName).text(argument.value.toString()))
                         }
@@ -281,7 +279,7 @@ class Formatter(output: OutputStream) : Logged, ConcurrentEventListener, ColorAw
                     }
 
                     is DataTableArgument -> {
-                        argument.value.toString().split("\n").dropLastWhile { it.isEmpty() }.toTypedArray()
+                        argument.value.toString().split(System.lineSeparator()).dropLastWhile { it.isEmpty() }
                             .forEach { row: String ->
                                 output.println(TABLES_INDENT + formats.get(statusName).text(row.trim()))
                             }
@@ -427,20 +425,6 @@ class Formatter(output: OutputStream) : Logged, ConcurrentEventListener, ColorAw
             }.max(Comparator.naturalOrder()).orElse(0)
 
         indexMap[case.id] = max(longestStep, this.format(case).length) + 1
-    }
-
-    private fun relativize(uri: URI): URI {
-        if ("file" != uri.scheme || !uri.isAbsolute) {
-            return uri
-        }
-
-        try {
-            val relative = File("").toURI().relativize(uri)
-
-            return URI("file", relative.schemeSpecificPart, relative.fragment)
-        } catch (e: URISyntaxException) {
-            throw IllegalArgumentException(e.message, e)
-        }
     }
 
     private fun arguments(testStep: TestStep): List<StepArgument> {

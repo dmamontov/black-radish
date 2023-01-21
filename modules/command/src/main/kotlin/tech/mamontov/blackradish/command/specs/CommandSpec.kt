@@ -1,13 +1,23 @@
 package tech.mamontov.blackradish.command.specs
 
 import com.google.gson.Gson
-import io.qameta.allure.Attachment
+import io.cucumber.docstring.DocString
+import io.qameta.allure.Allure
+import org.apache.commons.io.output.ByteArrayOutputStream
 import org.assertj.core.api.Assertions
 import tech.mamontov.blackradish.command.data.CommandResult
-import tech.mamontov.blackradish.command.properties.ThreadTimeoutProperty
 import tech.mamontov.blackradish.command.properties.ThreadCommandResultProperty
+import tech.mamontov.blackradish.command.properties.ThreadTimeoutProperty
+import tech.mamontov.blackradish.command.utils.Command
+import tech.mamontov.blackradish.command.utils.CommandThreadFuture
+import tech.mamontov.blackradish.command.utils.LocalCommand
+import tech.mamontov.blackradish.core.properties.ThreadFutureProperty
+import tech.mamontov.blackradish.core.properties.ThreadPoolProperty
 import tech.mamontov.blackradish.core.specs.BaseSpec
 import tech.mamontov.blackradish.core.utils.Logged
+import tech.mamontov.blackradish.core.utils.ThreadFuture
+import java.util.UUID
+import java.util.concurrent.ExecutorService
 import java.util.concurrent.TimeUnit
 
 abstract class CommandSpec : Logged, BaseSpec() {
@@ -15,24 +25,23 @@ abstract class CommandSpec : Logged, BaseSpec() {
         ThreadTimeoutProperty.set(seconds)
     }
 
-    open fun run(command: String): CommandResult? {
+    open fun run(command: String) {
         var commandResult: CommandResult? = null
 
         try {
-            val process = ProcessBuilder(*command.split("\\s".toRegex()).toTypedArray())
-                .redirectOutput(ProcessBuilder.Redirect.PIPE)
-                .redirectError(ProcessBuilder.Redirect.PIPE)
-                .start()
+            val local = LocalCommand(command)
 
-            process.waitFor(ThreadTimeoutProperty.get(), TimeUnit.SECONDS)
+            local.waitFor(ThreadTimeoutProperty.get())
 
-            commandResult = CommandResult(
-                process.exitValue(),
-                process.inputStream.bufferedReader().readText(),
-                process.pid(),
-            )
+            if (!local.exited()) {
+                local.destroy()
+
+                Assertions.fail<Any>("Timout error")
+            }
+
+            commandResult = CommandResult(local.exitCode(), local.read())
         } catch (e: Exception) {
-            Assertions.fail<Any>(e.message)
+            Assertions.fail<Any>(e.message, e)
         }
 
         if (commandResult !== null) {
@@ -41,23 +50,96 @@ abstract class CommandSpec : Logged, BaseSpec() {
         }
 
         ThreadTimeoutProperty.reset()
+    }
 
-        return commandResult
+    open fun runInBackground(command: String) {
+        val local = try {
+            LocalCommand(command, ByteArrayOutputStream())
+        } catch (e: Exception) {
+            Assertions.fail<Any>(e.message, e)
+        } as LocalCommand
+
+        this.inBackground(local)
+    }
+
+    open fun saveBackgroundId(variable: String) {
+        val future: ThreadFuture? = ThreadFutureProperty.last()
+
+        Assertions.assertThat(future).`as`("Background command not running").isNotNull
+
+        super.save(future!!.uuid.toString(), variable)
+    }
+
+    open fun closeBackground(variable: String?) {
+        val future: CommandThreadFuture? = if (variable === null) {
+            ThreadFutureProperty.last()
+        } else {
+            ThreadFutureProperty.get(variable)
+        } as CommandThreadFuture?
+
+        Assertions.assertThat(future).`as`("Background command not running").isNotNull
+
+        var commandResult: CommandResult? = null
+
+        try {
+            future!!.destroy()
+
+            commandResult = CommandResult(
+                future.command.exitCode(),
+                future.command.read()
+            )
+        } catch (e: Exception) {
+            Assertions.fail<Any>(e.message, e)
+        }
+
+        ThreadFutureProperty.remove(future!!.uuid.toString())
+
+        if (commandResult !== null) {
+            ThreadCommandResultProperty.set(commandResult)
+            this.attach(commandResult)
+        }
     }
 
     open fun tail(timeout: Int, command: String, search: String) {
+        val start = System.currentTimeMillis()
+        val millis = TimeUnit.SECONDS.toMillis(timeout.toLong() + 1)
+
         var commandResult: CommandResult? = null
 
-        loop@ for (number in 1..timeout) {
-            try {
-                commandResult = this.run(command)
+        try {
+            var content = ""
 
-                Assertions.assertThat(commandResult!!.content).contains(search)
+            var local = try {
+                LocalCommand(command)
+            } catch (e: Exception) {
+                Assertions.fail<Any>(e.message, e)
+            } as LocalCommand
 
-                break@loop
-            } catch (_: AssertionError) {
-                super.wait(1)
+            loop@ while ((System.currentTimeMillis() - start) <= millis) {
+                try {
+                    if (local.exited()) {
+                        local = LocalCommand(command)
+                    }
+
+                    val temp = local.safeRead()
+                    if (temp.isEmpty()) {
+                        continue
+                    }
+
+                    content += temp
+
+                    Assertions.assertThat(content).contains(search)
+
+                    local.destroy()
+
+                    commandResult = CommandResult(local.exitCode(), local.trim(content))
+
+                    break@loop
+                } catch (_: AssertionError) {
+                }
             }
+        } catch (e: Exception) {
+            Assertions.fail<Any>(e.message, e)
         }
 
         if (commandResult === null) {
@@ -69,16 +151,32 @@ abstract class CommandSpec : Logged, BaseSpec() {
     }
 
     open fun save(variable: String) {
-        super.save(this.getResult().content.trim(' ', '"', '\r', '\n'), variable)
+        super.save(this.getResult().content, variable)
     }
 
     open fun exitCode(code: Long) {
         Assertions.assertThat(this.getResult().code).isEqualTo(code)
     }
 
-    @Attachment(value = "pipe", type = "application/json")
-    protected fun attach(result: CommandResult): ByteArray {
-        return Gson().toJson(result).toByteArray()
+    open fun check(content: DocString) {
+        Assertions.assertThat(this.getResult().content).isEqualTo(content.content)
+    }
+
+    protected fun inBackground(command: Command) {
+        val pool: ExecutorService = ThreadPoolProperty.create()
+
+        val future = pool.submit {
+            while (!command.exited()) {
+                command.safeRead()
+            }
+        }
+
+        val uuid = UUID.randomUUID()
+        ThreadFutureProperty.add(uuid.toString(), CommandThreadFuture(uuid, future, command))
+    }
+
+    protected fun attach(result: CommandResult) {
+        Allure.addAttachment("pipe.json", "application/json", Gson().toJson(result).toString())
     }
 
     private fun getResult(): CommandResult {

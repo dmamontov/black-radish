@@ -9,18 +9,33 @@ import tech.mamontov.blackradish.core.utils.Logged
 
 class ConfigurationProperty : Logged {
     companion object {
+        const val THREAD_POOL_SHUTDOWN_TIMEOUT = "thread.pool.shutdown.timeout"
+
         const val ASPECT_INCLUDE_DEPTH = "aspect.include.depth"
+
         const val DEBUG_SHOW_TRACE = "debug.show.trace"
         const val DEBUG_SHOW_STACKTRACE = "debug.show.stacktrace"
+
         const val MODULE_COMMAND_TIMEOUT = "module.command.timeout"
-        const val MODULE_SSH_CONNECTION_TIMEOUT = "module.ssh.connection.timeout"
+
+        const val MODULE_SSH_COMMAND_TIMEOUT = "module.ssh.command.timeout"
+        const val MODULE_SSH_UPLOAD_TIMEOUT = "module.ssh.upload.timeout"
+        const val MODULE_SSH_DOWNLOAD_TIMEOUT = "module.ssh.download.timeout"
 
         private const val ERROR_MESSAGE = "settings.properties: %s"
         private val SETTINGS = listOf(
+            THREAD_POOL_SHUTDOWN_TIMEOUT,
+
             ASPECT_INCLUDE_DEPTH,
+
             DEBUG_SHOW_TRACE,
             DEBUG_SHOW_STACKTRACE,
+
             MODULE_COMMAND_TIMEOUT,
+
+            MODULE_SSH_COMMAND_TIMEOUT,
+            MODULE_SSH_UPLOAD_TIMEOUT,
+            MODULE_SSH_DOWNLOAD_TIMEOUT,
         )
 
         private val configuration: CombinedConfiguration = CombinedConfiguration(OverrideCombiner())
@@ -45,6 +60,10 @@ class ConfigurationProperty : Logged {
             SETTINGS.forEach { setting: String ->
                 try {
                     when (setting) {
+                        THREAD_POOL_SHUTDOWN_TIMEOUT -> Assertions.assertThat(
+                            get(setting, 10),
+                        ).`as`(ERROR_MESSAGE, setting).isGreaterThan(1)
+
                         ASPECT_INCLUDE_DEPTH -> Assertions.assertThat(
                             get(setting, 10),
                         ).`as`(ERROR_MESSAGE, setting).isGreaterThan(1)
@@ -57,12 +76,20 @@ class ConfigurationProperty : Logged {
                             get(setting, 60),
                         ).`as`(ERROR_MESSAGE, setting).isGreaterThan(0)
 
-                        MODULE_SSH_CONNECTION_TIMEOUT -> Assertions.assertThat(
-                            get(setting, 60),
+                        MODULE_SSH_COMMAND_TIMEOUT -> Assertions.assertThat(
+                            get(setting, 180),
                         ).`as`(ERROR_MESSAGE, setting).isGreaterThan(-1)
+
+                        MODULE_SSH_UPLOAD_TIMEOUT -> Assertions.assertThat(
+                            get(setting, 180),
+                        ).`as`(ERROR_MESSAGE, setting).isGreaterThan(1)
+
+                        MODULE_SSH_DOWNLOAD_TIMEOUT -> Assertions.assertThat(
+                            get(setting, 180),
+                        ).`as`(ERROR_MESSAGE, setting).isGreaterThan(1)
                     }
                 } catch (e: ConversionException) {
-                    Assertions.fail<Any>(e.message)
+                    Assertions.fail<Any>(e.message, e)
                 }
             }
         }

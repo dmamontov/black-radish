@@ -1,5 +1,6 @@
 plugins {
     id("org.jetbrains.kotlin.jvm") version embeddedKotlinVersion
+    id("com.avast.gradle.docker-compose") version "0.16.11" apply false
     id("io.qameta.allure") version "2.11.2"
 }
 
@@ -11,12 +12,12 @@ repositories {
 
 subprojects {
     apply(plugin = "org.jetbrains.kotlin.jvm")
+    apply(plugin = "com.avast.gradle.docker-compose")
     apply(plugin = "io.qameta.allure")
 
     repositories {
         mavenLocal()
         mavenCentral()
-
         gradlePluginPortal()
     }
 
@@ -58,9 +59,9 @@ subprojects {
         useTestNG()
 
         isScanForTestClasses = false
-        testLogging.showStandardStreams = true
 
         testLogging {
+            showStandardStreams = true
             exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
         }
     }

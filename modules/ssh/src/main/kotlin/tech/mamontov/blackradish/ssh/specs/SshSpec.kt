@@ -1,135 +1,148 @@
 package tech.mamontov.blackradish.ssh.specs
 
-import com.jcraft.jsch.Channel
-import com.jcraft.jsch.ChannelExec
-import com.jcraft.jsch.JSch
-import com.jcraft.jsch.Session
+import com.sshtools.client.SshClient
 import org.assertj.core.api.Assertions
-import tech.mamontov.blackradish.command.specs.CommandSpec
 import tech.mamontov.blackradish.command.data.CommandResult
 import tech.mamontov.blackradish.command.properties.ThreadCommandResultProperty
-import tech.mamontov.blackradish.core.utils.Logged
+import tech.mamontov.blackradish.command.properties.ThreadTimeoutProperty
+import tech.mamontov.blackradish.command.specs.CommandSpec
 import tech.mamontov.blackradish.core.properties.ConfigurationProperty
+import tech.mamontov.blackradish.core.utils.Logged
+import tech.mamontov.blackradish.core.utils.UriHelper
 import tech.mamontov.blackradish.ssh.enumerated.AuthType
-import tech.mamontov.blackradish.ssh.utils.SshUserInfo
-import tech.mamontov.blackradish.ssh.properties.ThreadSessionProperty
+import tech.mamontov.blackradish.ssh.enumerated.SftpMethod
+import tech.mamontov.blackradish.ssh.properties.ThreadSshProperty
+import tech.mamontov.blackradish.ssh.utils.SshCommand
 import java.io.File
-import java.net.URL
+import java.util.concurrent.TimeUnit
+
 
 abstract class SshSpec : Logged, CommandSpec() {
-    fun connect(host: String, port: Int, user: String, auth: AuthType, token: String) {
-        if (ThreadSessionProperty.get() !== null) {
+    fun connect(host: String, port: Int, user: String, auth: AuthType, token: String, passphrase: String?) {
+        if (ThreadSshProperty.get() !== null) {
             Assertions.fail<Any>("SSH connection already open")
         }
 
-        val ssh = JSch()
+        var connectionHost = host
+        var connectionPort = port
 
-        if (auth === AuthType.KEY) {
-            val url: URL? = this::class.java.classLoader.getResource(token)
-            if (url === null) {
-                Assertions.fail<Any>("Key file: $token does not exist")
-            }
-
-            try {
-                ssh.addIdentity(File(url!!.toURI()).path)
-            } catch (e: Exception) {
-                Assertions.fail<Any>(e.message)
+        if (host.contains(":")) {
+            val parts = host.split(":")
+            if (parts.size == 2) {
+                connectionHost = parts[0]
+                connectionPort = parts[1].toInt()
             }
         }
 
-        val sshSession: Session = ssh.getSession(user, host, port)
-        sshSession.userInfo = SshUserInfo()
-        sshSession.setConfig("PreferredAuthentications", "publickey,password");
-        sshSession.setConfig("StrictHostKeyChecking", "no")
-
-        if (auth === AuthType.PASSWORD) {
-            sshSession.setPassword(token)
-        }
+        val timeout = TimeUnit.SECONDS.toMillis(
+            ConfigurationProperty.get(ConfigurationProperty.MODULE_SSH_COMMAND_TIMEOUT, 60).toLong()
+        )
 
         try {
-            sshSession.connect(
-                ConfigurationProperty.get(ConfigurationProperty.MODULE_SSH_CONNECTION_TIMEOUT, 60)
-            )
-        } catch (e: Exception) {
-            Assertions.fail<Any>(e.message)
-        }
+            val ssh: SshClient = when (auth) {
+                AuthType.KEY -> {
+                    val file = File(UriHelper.uri(token).path)
+                    if (passphrase !== null) {
+                        SshClient(connectionHost, connectionPort, user, timeout, file, passphrase)
+                    } else {
+                        SshClient(connectionHost, connectionPort, user, timeout, file)
+                    }
+                }
 
-        ThreadSessionProperty.set(sshSession)
+                else -> SshClient(connectionHost, connectionPort, user, timeout, token.toCharArray())
+            }
+
+            ThreadSshProperty.set(ssh)
+        } catch (e: Exception) {
+            Assertions.fail<Any>(e.message, e)
+        }
     }
 
     open fun disconnect() {
-        if (ThreadSessionProperty.get() === null) {
-            Assertions.fail<Any>("SSH connection not open")
-        }
+        this.check()
 
-        ThreadSessionProperty.close()
+        ThreadSshProperty.close()
     }
 
-    override fun run(command: String): CommandResult? {
-        if (ThreadSessionProperty.get() === null) {
-            Assertions.fail<Any>("SSH connection not open")
-        }
+    override fun run(command: String) {
+        this.check()
 
         var commandResult: CommandResult? = null
+
         try {
-            val channel: Channel = ThreadSessionProperty.get()!!.openChannel("exec")
-            (channel as ChannelExec).setCommand(
-                "set -o pipefail && $command | grep . --color=never; exit \$PIPESTATUS"
-            )
+            var ssh = SshCommand(command)
 
-            channel.setInputStream(null)
-            channel.setErrStream(System.err)
-            channel.setPty(true)
+            ssh.waitFor(ThreadTimeoutProperty.get())
 
-            val stream = channel.getInputStream()
+            if (!ssh.exited()) {
+                ssh.destroy()
 
-            channel.connect()
-
-            var message = ""
-            val temp = ByteArray(1024)
-            while (!channel.isClosed() || stream.available() > 0) {
-                val i: Int = stream.read(temp, 0, 1024)
-                if (i < 0) {
-                    break
-                }
-                message += String(temp, 0, i)
-
-                if (!channel.isClosed() && stream.available() <= 0) {
-                    this.wait(1)
-                }
+                Assertions.fail<Any>("Timout error")
             }
 
-            commandResult = CommandResult(
-                channel.getExitStatus(),
-                message
-            )
-
-            channel.disconnect()
+            commandResult = CommandResult(ssh.exitCode(), ssh.read())
         } catch (e: Exception) {
-            Assertions.fail<Any>(e.message)
+            Assertions.fail<Any>(e.message, e)
         }
 
         if (commandResult !== null) {
             ThreadCommandResultProperty.set(commandResult)
             this.attach(commandResult)
         }
+    }
 
-        return commandResult
+    override fun runInBackground(command: String) {
+        this.check()
+
+        val ssh = try {
+            SshCommand(command)
+        } catch (e: Exception) {
+            Assertions.fail<Any>(e.message, e)
+        } as SshCommand
+
+        this.inBackground(ssh)
     }
 
     override fun tail(timeout: Int, command: String, search: String) {
+        this.check()
+
+        val start = System.currentTimeMillis()
+        val millis = TimeUnit.SECONDS.toMillis(timeout.toLong() + 1)
+
         var commandResult: CommandResult? = null
 
-        loop@ for (number in 1..timeout) {
-            try {
-                commandResult = this.run(command)
+        try {
+            var content = ""
+            var sshCommand = SshCommand(command)
 
-                Assertions.assertThat(commandResult!!.content).contains(search)
+            loop@ while ((System.currentTimeMillis() - start) <= millis) {
+                try {
+                    if (sshCommand.exited()) {
+                        content += sshCommand.safeRead()
 
-                break@loop
-            } catch (_: AssertionError) {
-                super.wait(1)
+                        sshCommand = SshCommand(command)
+                    }
+
+                    val temp = sshCommand.safeRead()
+                    if (temp.isEmpty()) {
+                        continue
+                    }
+
+                    Assertions.assertThat(temp).contains(search)
+
+                    sshCommand.destroy()
+
+                    commandResult = CommandResult(
+                        sshCommand.exitCode(),
+                        sshCommand.trim(content + temp)
+                    )
+
+                    break@loop
+                } catch (_: AssertionError) {
+                }
             }
+        } catch (e: Exception) {
+            Assertions.fail<Any>(e.message, e)
         }
 
         if (commandResult === null) {
@@ -138,5 +151,48 @@ abstract class SshSpec : Logged, CommandSpec() {
 
         ThreadCommandResultProperty.set(commandResult!!)
         this.attach(commandResult)
+    }
+
+    open fun upload(source: String, target: String) {
+        this.check()
+
+        this.sftp(
+            UriHelper.uri(source).path,
+            target,
+            SftpMethod.UPLOAD,
+            ConfigurationProperty.get(ConfigurationProperty.MODULE_SSH_UPLOAD_TIMEOUT, 15000),
+        )
+    }
+
+    open fun download(source: String, target: String) {
+        this.check()
+
+        this.sftp(
+            source,
+            UriHelper.uri(target, true).path,
+            SftpMethod.DOWNLOAD,
+            ConfigurationProperty.get(ConfigurationProperty.MODULE_SSH_DOWNLOAD_TIMEOUT, 15000),
+        )
+    }
+
+    private fun sftp(source: String, target: String, method: SftpMethod, timeout: Int) {
+        val timeoutMillis = TimeUnit.SECONDS.toMillis(timeout.toLong())
+
+        try {
+            val ssh = ThreadSshProperty.get()!!
+
+            when (method) {
+                SftpMethod.UPLOAD -> ssh.putFile(File(source), target, timeoutMillis)
+                SftpMethod.DOWNLOAD -> ssh.getFile(source, File(target), timeoutMillis)
+            }
+        } catch (e: Exception) {
+            Assertions.fail<Any>(e.message, e)
+        }
+    }
+
+    private fun check() {
+        if (ThreadSshProperty.get() === null) {
+            Assertions.fail<Any>("SSH connection not open")
+        }
     }
 }

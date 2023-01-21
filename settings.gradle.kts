@@ -4,4 +4,5 @@ include(
     "core",
     "modules:command",
     "modules:ssh",
+    "modules:filesystem",
 )

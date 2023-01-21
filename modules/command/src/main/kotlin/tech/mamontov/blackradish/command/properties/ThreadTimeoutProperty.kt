@@ -1,7 +1,7 @@
 package tech.mamontov.blackradish.command.properties
 
-import tech.mamontov.blackradish.core.utils.Logged
 import tech.mamontov.blackradish.core.properties.ConfigurationProperty
+import tech.mamontov.blackradish.core.utils.Logged
 
 class ThreadTimeoutProperty : Logged {
     companion object {

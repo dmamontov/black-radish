@@ -3,8 +3,8 @@ package tech.mamontov.blackradish.core.specs
 import org.apache.commons.lang3.math.NumberUtils
 import org.assertj.core.api.Assertions
 import tech.mamontov.blackradish.core.enumerated.ComparisonOperation
-import tech.mamontov.blackradish.core.utils.Logged
 import tech.mamontov.blackradish.core.properties.ThreadProperty
+import tech.mamontov.blackradish.core.utils.Logged
 
 abstract class BaseSpec : Logged {
     open fun wait(seconds: Int) {

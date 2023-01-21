@@ -6,7 +6,7 @@ import tech.mamontov.blackradish.core.testng.BaseTest
 
 @CucumberOptions(
     features = [
-        //"classpath:features/en/command.feature",
+        "classpath:features/en/ssh.feature",
         "classpath:features/ru/ssh.feature",
     ],
 )
