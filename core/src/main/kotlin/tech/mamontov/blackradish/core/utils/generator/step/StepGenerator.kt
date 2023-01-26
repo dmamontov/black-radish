@@ -4,7 +4,7 @@ import io.cucumber.core.backend.StepDefinition
 import io.cucumber.core.gherkin.Step
 import tech.mamontov.blackradish.core.enumerated.Token
 import tech.mamontov.blackradish.core.exceptions.IncludeException
-import tech.mamontov.blackradish.core.utils.Logged
+import tech.mamontov.blackradish.core.interfaces.Logged
 import tech.mamontov.blackradish.core.utils.TokenParser
 import tech.mamontov.blackradish.core.utils.reflecation.Reflecation
 import tech.mamontov.blackradish.core.utils.reflecation.ReflecationMethod

@@ -24,9 +24,9 @@ import io.cucumber.plugin.event.TestStep
 import io.cucumber.plugin.event.TestStepFinished
 import io.cucumber.plugin.event.WriteEvent
 import tech.mamontov.blackradish.core.aspects.ReplacementAspect
+import tech.mamontov.blackradish.core.helpers.UriHelper
+import tech.mamontov.blackradish.core.interfaces.Logged
 import tech.mamontov.blackradish.core.properties.ConfigurationProperty
-import tech.mamontov.blackradish.core.utils.Logged
-import tech.mamontov.blackradish.core.utils.UriHelper
 import tech.mamontov.blackradish.core.utils.formatter.OutputAppendable
 import tech.mamontov.blackradish.core.utils.formatter.OutputUtf8StreamWriter
 import tech.mamontov.blackradish.core.utils.formatter.TestSources
@@ -119,8 +119,11 @@ class Formatter(output: OutputStream) : Logged, ConcurrentEventListener, ColorAw
             this.printComments(event.testStep as PickleStepTestStep)
             this.printStep(event.testStep as PickleStepTestStep, event)
 
-            if (ConfigurationProperty.get(ConfigurationProperty.DEBUG_SHOW_TRACE, false)) {
-                this.printStack(event.testStep as PickleStepTestStep)
+            try {
+                if (ConfigurationProperty.get(ConfigurationProperty.DEBUG_SHOW_TRACE, false)) {
+                    this.printStack(event.testStep as PickleStepTestStep)
+                }
+            } catch (_: Exception) {
             }
         }
 

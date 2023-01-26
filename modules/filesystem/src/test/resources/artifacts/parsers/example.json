@@ -1,0 +1,26 @@
+[
+  {
+    "localAS": "65551",
+    "remoteAS": "65551",
+    "remoteIp": "10.10.10.10",
+    "routerId": "192.0.2.1",
+    "status": "5",
+    "uptime": "10:37:12"
+  },
+  {
+    "localAS": "65551",
+    "remoteAS": "65552",
+    "remoteIp": "10.10.100.1",
+    "routerId": "192.0.2.1",
+    "status": "0",
+    "uptime": "10:38:27"
+  },
+  {
+    "localAS": "65551",
+    "remoteAS": "65553",
+    "remoteIp": "10.100.10.9",
+    "routerId": "192.0.2.1",
+    "status": "1",
+    "uptime": "07:55:38"
+  }
+]

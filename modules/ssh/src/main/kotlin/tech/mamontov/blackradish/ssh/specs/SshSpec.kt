@@ -6,16 +6,15 @@ import tech.mamontov.blackradish.command.data.CommandResult
 import tech.mamontov.blackradish.command.properties.ThreadCommandResultProperty
 import tech.mamontov.blackradish.command.properties.ThreadTimeoutProperty
 import tech.mamontov.blackradish.command.specs.CommandSpec
+import tech.mamontov.blackradish.core.helpers.UriHelper
+import tech.mamontov.blackradish.core.interfaces.Logged
 import tech.mamontov.blackradish.core.properties.ConfigurationProperty
-import tech.mamontov.blackradish.core.utils.Logged
-import tech.mamontov.blackradish.core.utils.UriHelper
+import tech.mamontov.blackradish.ssh.commands.SshCommand
 import tech.mamontov.blackradish.ssh.enumerated.AuthType
 import tech.mamontov.blackradish.ssh.enumerated.SftpMethod
 import tech.mamontov.blackradish.ssh.properties.ThreadSshProperty
-import tech.mamontov.blackradish.ssh.utils.SshCommand
 import java.io.File
 import java.util.concurrent.TimeUnit
-
 
 abstract class SshSpec : Logged, CommandSpec() {
     fun connect(host: String, port: Int, user: String, auth: AuthType, token: String, passphrase: String?) {
@@ -35,7 +34,7 @@ abstract class SshSpec : Logged, CommandSpec() {
         }
 
         val timeout = TimeUnit.SECONDS.toMillis(
-            ConfigurationProperty.get(ConfigurationProperty.MODULE_SSH_COMMAND_TIMEOUT, 60).toLong()
+            ConfigurationProperty.get(ConfigurationProperty.MODULE_SSH_COMMAND_TIMEOUT, 60).toLong(),
         )
 
         try {
@@ -88,6 +87,7 @@ abstract class SshSpec : Logged, CommandSpec() {
         if (commandResult !== null) {
             ThreadCommandResultProperty.set(commandResult)
             this.attach(commandResult)
+            this.parse(commandResult)
         }
     }
 
@@ -134,7 +134,7 @@ abstract class SshSpec : Logged, CommandSpec() {
 
                     commandResult = CommandResult(
                         sshCommand.exitCode(),
-                        sshCommand.trim(content + temp)
+                        sshCommand.trim(content + temp),
                     )
 
                     break@loop
@@ -151,6 +151,7 @@ abstract class SshSpec : Logged, CommandSpec() {
 
         ThreadCommandResultProperty.set(commandResult!!)
         this.attach(commandResult)
+        this.parse(commandResult)
     }
 
     open fun upload(source: String, target: String) {

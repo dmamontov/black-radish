@@ -1,6 +1,6 @@
 package tech.mamontov.blackradish.core.utils.formatter.formats
 
-import tech.mamontov.blackradish.core.utils.Logged
+import tech.mamontov.blackradish.core.interfaces.Logged
 import tech.mamontov.blackradish.core.utils.formatter.OutputAppendable
 
 class Escapes private constructor(private val value: String) : Logged {

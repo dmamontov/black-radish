@@ -1,6 +1,6 @@
 package tech.mamontov.blackradish.core.utils.formatter.formats
 
-import tech.mamontov.blackradish.core.utils.Logged
+import tech.mamontov.blackradish.core.interfaces.Logged
 
 class AnsiFormats : Logged, Formats {
     private val formats: Map<String, Format> = object : HashMap<String, Format>() {

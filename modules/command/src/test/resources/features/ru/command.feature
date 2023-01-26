@@ -100,3 +100,68 @@
         three
         four
         """
+
+  Правило: Парсинг результата
+
+    Сценарий: Пример парсинга json
+      #Note: подробнее https://github.com/json-path/JsonPath
+      Когда я открываю файл 'artifacts/parsers/example.json'
+      Тогда я сохраняю результат в переменной 'JSON'
+      Затем я запускаю команду 'printf '${JSON}'' локально
+      Тогда я проверяю результат по схеме 'artifacts/schemas/json.json'
+      И результат содержит '3' записи
+      И сумма '$..remoteAS' в результате равна '196656.0'
+      И в результате:
+        | $.[0].localAS  | равно         | 65551                |
+        | $.[0].remoteAS | больше        | 65550                |
+        | $.[0].remoteIp | соответствует | ^\d+\.\d+\.\d+\.\d+$ |
+        | $.[1].status   | меньше        | 1                    |
+        | $.[2].status   | не равно      | 0                    |
+        | $.[2].routerId | содержит      | 192                  |
+
+    Сценарий: Пример парсинга xml
+      #Note: подробнее https://github.com/json-path/JsonPath
+      Когда я открываю файл 'artifacts/parsers/example.xml'
+      Тогда я сохраняю результат в переменной 'XML'
+      Затем я запускаю команду 'printf '${XML}'' локально
+      Тогда я проверяю результат по схеме 'artifacts/schemas/xml.xsd'
+      И сумма '$.root.element.*.remoteAS' в результате равна '196656.0'
+      И в результате:
+        | $.root.element.[0].localAS  | равно         | 65551                |
+        | $.root.element.[0].remoteAS | больше        | 65550                |
+        | $.root.element.[0].remoteIp | соответствует | ^\d+\.\d+\.\d+\.\d+$ |
+        | $.root.element.[1].status   | меньше        | 1                    |
+        | $.root.element.[2].status   | не равно      | 0                    |
+        | $.root.element.[2].routerId | содержит      | 192                  |
+
+    Сценарий: Пример парсинга yaml
+      #Note: подробнее https://github.com/json-path/JsonPath
+      Когда я открываю файл 'artifacts/parsers/example.yaml'
+      Тогда я сохраняю результат в переменной 'YAML'
+      Затем я запускаю команду 'printf '\"${YAML}"\'' локально
+      Тогда я проверяю результат по схеме 'artifacts/schemas/yaml.json'
+      И результат содержит '3' записи
+      И сумма '$..remoteAS' в результате равна '196656.0'
+      И в результате:
+        | $.[0].localAS  | равно         | 65551                |
+        | $.[0].remoteAS | больше        | 65550                |
+        | $.[0].remoteIp | соответствует | ^\d+\.\d+\.\d+\.\d+$ |
+        | $.[1].status   | меньше        | 1                    |
+        | $.[2].status   | не равно      | 0                    |
+        | $.[2].routerId | содержит      | 192                  |
+
+    Сценарий: Пример парсинга результата по шаблону
+      #Note: подробнее https://github.com/sonalake/utah-parser, https://github.com/json-path/JsonPath
+      Когда я разбираю файл 'artifacts/parsers/example.txt' используя шаблон 'artifacts/templates/parser.xml'
+      Тогда я сохраняю результат в переменной 'TXT'
+      Затем я запускаю команду 'printf '${TXT}'' локально
+      И разбираю результат выполнения команды используя шаблон 'artifacts/templates/parser.xml'
+      Тогда результат содержит '3' записи
+      И сумма '$..localAS' в результате равна '196653.0'
+      И в результате:
+        | $.[0].localAS  | равно         | 65551                |
+        | $.[0].remoteAS | больше        | 65550                |
+        | $.[0].remoteIp | соответствует | ^\d+\.\d+\.\d+\.\d+$ |
+        | $.[1].status   | меньше        | 1                    |
+        | $.[2].status   | не равно      | 0                    |
+        | $.[2].routerId | содержит      | 192                  |

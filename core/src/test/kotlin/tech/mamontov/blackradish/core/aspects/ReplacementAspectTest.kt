@@ -56,6 +56,13 @@ class ReplacementAspectTest {
     }
 
     @Test
+    fun replaceEscapeCaseTest() {
+        System.setProperty("FIRST", "- test\n - test2")
+
+        assertThat(ReplacementAspect.replace("\${FIRST}")).isEqualTo("- test\n - test2")
+    }
+
+    @Test
     fun replacePropertyTest() {
         System.setProperty("env", "test")
         ConfigurationLoader.load(

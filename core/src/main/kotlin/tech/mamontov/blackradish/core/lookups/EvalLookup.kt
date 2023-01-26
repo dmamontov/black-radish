@@ -1,7 +1,7 @@
 package tech.mamontov.blackradish.core.lookups
 
 import org.apache.commons.text.lookup.StringLookup
-import tech.mamontov.blackradish.core.utils.Logged
+import tech.mamontov.blackradish.core.interfaces.Logged
 import javax.script.ScriptEngineManager
 import javax.script.ScriptException
 

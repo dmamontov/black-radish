@@ -133,49 +133,49 @@ Feature: Basic functionality
 
     Scenario: An example of cyclic code generation from and to
       * Loop from '1' to '5':
-        * If '${loop.value} == 1':
-            Then '${loop.value}' is '1'
-        * Else If '${loop.value} == 2':
-            Then '${loop.value}' is '2'
-        * Else If '${loop.value} == 3':
-            Then '${loop.value}' is '3'
-        * Else:
-            Then '${loop.value}' is higher than '3'
-        * End If
+      * If '${loop.value} == 1':
+      Then '${loop.value}' is '1'
+      * Else If '${loop.value} == 2':
+      Then '${loop.value}' is '2'
+      * Else If '${loop.value} == 3':
+      Then '${loop.value}' is '3'
+      * Else:
+      Then '${loop.value}' is higher than '3'
+      * End If
       * End Loop
 
     Scenario: An example of cyclic code generation from and to in reverse order
       * Loop from '10' to '5':
-        * If '${loop.value} == 10':
-            Then '${loop.value}' is '10'
-        * Else If '${loop.value} == 9':
-            Then '${loop.value}' is '9'
-        * Else If '${loop.value} == 8':
-            Then '${loop.value}' is '8'
-        * Else:
-            Then '${loop.value}' is lower than '8'
-        * End If
+      * If '${loop.value} == 10':
+      Then '${loop.value}' is '10'
+      * Else If '${loop.value} == 9':
+      Then '${loop.value}' is '9'
+      * Else If '${loop.value} == 8':
+      Then '${loop.value}' is '8'
+      * Else:
+      Then '${loop.value}' is lower than '8'
+      * End If
       * End Loop
 
     Scenario: An example of cyclic generation from a list
       * Loop in 'first,second,three':
-        * If '"${loop.value}" == "first"':
-            Then '${loop.value}' is 'first'
-        * Else If '"${loop.value}" == "second"':
-            Then '${loop.value}' is 'second'
-        * Else If '"${loop.value}" == "three"':
-            Then '${loop.value}' is 'three'
-        * End If
+      * If '"${loop.value}" == "first"':
+      Then '${loop.value}' is 'first'
+      * Else If '"${loop.value}" == "second"':
+      Then '${loop.value}' is 'second'
+      * Else If '"${loop.value}" == "three"':
+      Then '${loop.value}' is 'three'
+      * End If
       * End Loop
 
     Scenario: An example of cyclic generation from a list using a variable
       Given i save 'example' in variable 'ONE'
       * Loop in '${ONE},second,three':
-        * If '"${loop.value}" == "example"':
-            Then '${loop.value}' is 'example'
-        * Else If '"${loop.value}" == "second"':
-            Then '${loop.value}' is 'second'
-        * Else If '"${loop.value}" == "three"':
-            Then '${loop.value}' is 'three'
-        * End If
+      * If '"${loop.value}" == "example"':
+      Then '${loop.value}' is 'example'
+      * Else If '"${loop.value}" == "second"':
+      Then '${loop.value}' is 'second'
+      * Else If '"${loop.value}" == "three"':
+      Then '${loop.value}' is 'three'
+      * End If
       * End Loop

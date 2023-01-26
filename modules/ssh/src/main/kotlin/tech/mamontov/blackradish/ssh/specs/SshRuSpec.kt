@@ -4,7 +4,7 @@ import io.cucumber.java.ru.Затем
 import io.cucumber.java.ru.Когда
 import io.cucumber.java.ru.Тогда
 import tech.mamontov.blackradish.core.annotations.Glue
-import tech.mamontov.blackradish.core.utils.Logged
+import tech.mamontov.blackradish.core.interfaces.Logged
 import tech.mamontov.blackradish.ssh.enumerated.AuthType
 
 @Glue

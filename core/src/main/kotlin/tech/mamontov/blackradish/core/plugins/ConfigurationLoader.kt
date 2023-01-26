@@ -8,17 +8,17 @@ import org.apache.commons.configuration2.PropertiesConfiguration
 import org.apache.commons.configuration2.builder.FileBasedConfigurationBuilder
 import org.apache.commons.configuration2.builder.fluent.Parameters
 import tech.mamontov.blackradish.core.aspects.ReplacementAspect
+import tech.mamontov.blackradish.core.helpers.UriHelper
+import tech.mamontov.blackradish.core.interfaces.Logged
 import tech.mamontov.blackradish.core.properties.ConfigurationProperty
 import tech.mamontov.blackradish.core.properties.ThreadProperty
-import tech.mamontov.blackradish.core.utils.Logged
-import tech.mamontov.blackradish.core.utils.UriHelper
 import java.io.File
 import java.net.URISyntaxException
 
 @Suppress("UNUSED_PARAMETER")
 class ConfigurationLoader : Logged, ConcurrentEventListener {
     companion object {
-        const val CONFIG_LOADED = "_cl"
+        private const val CONFIG_LOADED = "_cl"
         fun load() {
             try {
                 val files: ArrayList<String> = arrayListOf("common", "settings")

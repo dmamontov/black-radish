@@ -1,7 +1,7 @@
 package tech.mamontov.blackradish.core.utils.reflecation
 
 import com.google.gson.Gson
-import tech.mamontov.blackradish.core.utils.Logged
+import tech.mamontov.blackradish.core.interfaces.Logged
 import java.lang.reflect.Field
 import java.lang.reflect.Method
 

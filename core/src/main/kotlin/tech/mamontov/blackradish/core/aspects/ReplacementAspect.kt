@@ -14,13 +14,13 @@ import org.aspectj.lang.annotation.Aspect
 import org.aspectj.lang.annotation.Before
 import org.aspectj.lang.annotation.Pointcut
 import org.assertj.core.api.Assertions
+import tech.mamontov.blackradish.core.interfaces.Logged
 import tech.mamontov.blackradish.core.lookups.DefaultLookup
 import tech.mamontov.blackradish.core.lookups.EvalLookup
 import tech.mamontov.blackradish.core.lookups.FakerLookup
 import tech.mamontov.blackradish.core.lookups.LowerLookup
 import tech.mamontov.blackradish.core.lookups.MathLookup
 import tech.mamontov.blackradish.core.lookups.UpperLookup
-import tech.mamontov.blackradish.core.utils.Logged
 import tech.mamontov.blackradish.core.utils.reflecation.Reflecation
 
 @Aspect

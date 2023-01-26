@@ -1,6 +1,6 @@
 package tech.mamontov.blackradish.core.properties
 
-import tech.mamontov.blackradish.core.utils.Logged
+import tech.mamontov.blackradish.core.interfaces.Logged
 import java.util.Properties
 
 class ThreadProperty : Logged {

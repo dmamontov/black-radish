@@ -2,11 +2,11 @@ package tech.mamontov.blackradish.command.specs
 
 import io.cucumber.docstring.DocString
 import io.cucumber.java.ru.Затем
+import io.cucumber.java.ru.И
 import io.cucumber.java.ru.Когда
 import io.cucumber.java.ru.Тогда
-import io.cucumber.java.ru.И
 import tech.mamontov.blackradish.core.annotations.Glue
-import tech.mamontov.blackradish.core.utils.Logged
+import tech.mamontov.blackradish.core.interfaces.Logged
 
 @Glue
 class CommandRuSpec : Logged, CommandSpec() {
@@ -43,6 +43,11 @@ class CommandRuSpec : Logged, CommandSpec() {
     @Тогда("^[С|с]охраняю результат выполнения команды в переменную '([A-Za-z0-9_]+)'$")
     override fun save(variable: String) {
         super.save(variable)
+    }
+
+    @Когда("^[Р|р]азбираю результат выполнения команды используя шаблон '(.*?)'$")
+    override fun parseResult(templatePath: String) {
+        super.parseResult(templatePath)
     }
 
     @Тогда("^[К|к]од выхода команды должен быть '(-?\\d+)'$")

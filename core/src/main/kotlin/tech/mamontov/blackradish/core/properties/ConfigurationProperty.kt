@@ -5,7 +5,7 @@ import org.apache.commons.configuration2.FileBasedConfiguration
 import org.apache.commons.configuration2.ex.ConversionException
 import org.apache.commons.configuration2.tree.OverrideCombiner
 import org.assertj.core.api.Assertions
-import tech.mamontov.blackradish.core.utils.Logged
+import tech.mamontov.blackradish.core.interfaces.Logged
 
 class ConfigurationProperty : Logged {
     companion object {

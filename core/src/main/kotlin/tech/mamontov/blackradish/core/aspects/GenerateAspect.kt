@@ -19,7 +19,7 @@ import org.aspectj.lang.annotation.Aspect
 import org.aspectj.lang.annotation.Before
 import org.aspectj.lang.annotation.Pointcut
 import org.assertj.core.api.Assertions
-import tech.mamontov.blackradish.core.utils.Logged
+import tech.mamontov.blackradish.core.interfaces.Logged
 import tech.mamontov.blackradish.core.utils.generator.step.IncludeGenerator
 import tech.mamontov.blackradish.core.utils.generator.step.OperationGenerator
 import tech.mamontov.blackradish.core.utils.reflecation.Reflecation

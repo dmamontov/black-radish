@@ -4,8 +4,9 @@ import io.cucumber.docstring.DocString
 import io.cucumber.java.en.And
 import io.cucumber.java.en.Then
 import io.cucumber.java.en.When
+import io.cucumber.java.ru.Когда
 import tech.mamontov.blackradish.core.annotations.Glue
-import tech.mamontov.blackradish.core.utils.Logged
+import tech.mamontov.blackradish.core.interfaces.Logged
 
 @Glue
 class CommandEnSpec : Logged, CommandSpec() {
@@ -42,6 +43,11 @@ class CommandEnSpec : Logged, CommandSpec() {
     @Then("^[S|s]ave the result of the command execution in the variable '([A-Za-z0-9_]+)'$")
     override fun save(variable: String) {
         super.save(variable)
+    }
+
+    @Когда("^[P|p]arse the result of the command using a template '(.*?)'$")
+    override fun parseResult(templatePath: String) {
+        super.parseResult(templatePath)
     }
 
     @Then("^[C|c]ommand exit code must be '(-?\\d+)'$")

@@ -3,7 +3,7 @@ package tech.mamontov.blackradish.ssh.specs
 import io.cucumber.java.en.Then
 import io.cucumber.java.en.When
 import tech.mamontov.blackradish.core.annotations.Glue
-import tech.mamontov.blackradish.core.utils.Logged
+import tech.mamontov.blackradish.core.interfaces.Logged
 import tech.mamontov.blackradish.ssh.enumerated.AuthType
 
 @Glue

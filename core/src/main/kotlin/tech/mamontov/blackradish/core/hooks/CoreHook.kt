@@ -7,6 +7,7 @@ import org.apache.commons.io.FilenameUtils
 import org.testng.SkipException
 import tech.mamontov.blackradish.core.annotations.Glue
 import tech.mamontov.blackradish.core.properties.ConfigurationProperty
+import tech.mamontov.blackradish.core.properties.ThreadDatabaseProperty
 import tech.mamontov.blackradish.core.properties.ThreadFutureProperty
 import tech.mamontov.blackradish.core.properties.ThreadPoolProperty
 import tech.mamontov.blackradish.core.properties.ThreadProperty
@@ -16,8 +17,14 @@ import java.util.concurrent.TimeUnit
 @Suppress("UNUSED_PARAMETER")
 class CoreHook {
     @After(order = 0)
-    fun destroyBackground(scenario: Scenario) {
+    fun destroy(scenario: Scenario) {
         destroyBackground(false)
+        ThreadDatabaseProperty.disconnect(true)
+    }
+
+    @After(value = "@sql or @SQL or @Sql", order = 97)
+    fun sql(scenario: Scenario) {
+        ThreadDatabaseProperty.disconnect(true)
     }
 
     @After(value = "@force or @FORCE or @Force", order = 98)
@@ -55,7 +62,7 @@ class CoreHook {
 
         val timeout = ConfigurationProperty.get(ConfigurationProperty.THREAD_POOL_SHUTDOWN_TIMEOUT, 10).toLong()
         if (force || !pool.awaitTermination(timeout, TimeUnit.SECONDS)) {
-            pool.shutdownNow();
+            pool.shutdownNow()
         }
 
         ThreadPoolProperty.reset()

@@ -1,8 +1,7 @@
 package tech.mamontov.blackradish.ssh.properties
 
-import com.jcraft.jsch.Session
 import com.sshtools.client.SshClient
-import tech.mamontov.blackradish.core.utils.Logged
+import tech.mamontov.blackradish.core.interfaces.Logged
 
 class ThreadSshProperty : Logged {
     companion object {

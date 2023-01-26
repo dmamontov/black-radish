@@ -12,31 +12,35 @@
       Тогда я закрываю ssh соединение
 
     Сценарий: Пример подключение по ssh c ключом
-      Пусть я открываю ssh соединение к '${SSH_HOST}:${SSH_PORT}' от имени '${SSH_USERNAME}' с ключом '${SSH_PEM}'
+      Пусть я открываю ssh соединение к '${SSH_HOST}:${SSH_PORT}' от имени '${SSH_USERNAME}' с ключом '${SSH_DEFAULT_PEM}'
+      Тогда я закрываю ssh соединение
+
+    Сценарий: Пример подключение по ssh c ключом и паролем для ключа
+      Пусть я открываю ssh соединение к '${SSH_HOST}:${SSH_PORT}' от имени '${SSH_USERNAME}' с ключом '${SSH_PASS_PEM}' и паролем '${SSH_PASSPHRASE}'
       Тогда я закрываю ssh соединение
 
   Правило: Запуск команд
 
     Сценарий: Пример запуска команды
-      Пусть я открываю ssh соединение к '${SSH_HOST}:${SSH_PORT}' от имени '${SSH_USERNAME}' с ключом '${SSH_PEM}'
+      Пусть я открываю ssh соединение к '${SSH_HOST}:${SSH_PORT}' от имени '${SSH_USERNAME}' с ключом '${SSH_DEFAULT_PEM}'
       Тогда я запускаю команду 'echo "example"' по ssh
       Тогда я закрываю ssh соединение
 
     Сценарий: Пример запуска команды по ssh каждую секунду в течении указанного времени до появления содержимого
-      Пусть я открываю ssh соединение к '${SSH_HOST}:${SSH_PORT}' от имени '${SSH_USERNAME}' с ключом '${SSH_PEM}'
+      Пусть я открываю ssh соединение к '${SSH_HOST}:${SSH_PORT}' от имени '${SSH_USERNAME}' с ключом '${SSH_DEFAULT_PEM}'
       Затем менее чем через '10' секунд вывод ssh команды 'sleep 1 && printf "first\nsecond" && sleep 10 && echo "four"' содержит 'second'
       Тогда я закрываю ssh соединение
 
     @force
     Сценарий: Пример запуска команды в фоне
-      Пусть я открываю ssh соединение к '${SSH_HOST}:${SSH_PORT}' от имени '${SSH_USERNAME}' с ключом '${SSH_PEM}'
+      Пусть я открываю ssh соединение к '${SSH_HOST}:${SSH_PORT}' от имени '${SSH_USERNAME}' с ключом '${SSH_DEFAULT_PEM}'
       Тогда я запускаю ssh команду 'sleep 1 && echo "first" && sleep 1 && echo "second"' в фоне
       Затем я завершаю команду запущенную в фоне
       Затем я закрываю ssh соединение
 
     @force
     Сценарий: Пример запуска нескольких команд в фоне
-      Пусть я открываю ssh соединение к '${SSH_HOST}:${SSH_PORT}' от имени '${SSH_USERNAME}' с ключом '${SSH_PEM}'
+      Пусть я открываю ssh соединение к '${SSH_HOST}:${SSH_PORT}' от имени '${SSH_USERNAME}' с ключом '${SSH_DEFAULT_PEM}'
 
       Тогда я запускаю ssh команду 'sleep 1 && echo "first" && sleep 2 && echo "second"' в фоне
       И сохраняю идентификатор команды в переменную 'FIRST'
@@ -50,20 +54,20 @@
   Правило: Результат выполнения команд
 
     Сценарий: Пример сохранения результата выполнения команды в переменную
-      Пусть я открываю ssh соединение к '${SSH_HOST}:${SSH_PORT}' от имени '${SSH_USERNAME}' с ключом '${SSH_PEM}'
+      Пусть я открываю ssh соединение к '${SSH_HOST}:${SSH_PORT}' от имени '${SSH_USERNAME}' с ключом '${SSH_DEFAULT_PEM}'
       Тогда я запускаю команду 'echo "first"' по ssh
       И сохраняю результат выполнения команды в переменную 'RESULT'
       И '${RESULT}' равно 'first'
       Тогда я закрываю ssh соединение
 
     Сценарий: Пример проверки кода выхода команды
-      Пусть я открываю ssh соединение к '${SSH_HOST}:${SSH_PORT}' от имени '${SSH_USERNAME}' с ключом '${SSH_PEM}'
+      Пусть я открываю ssh соединение к '${SSH_HOST}:${SSH_PORT}' от имени '${SSH_USERNAME}' с ключом '${SSH_DEFAULT_PEM}'
       Когда я запускаю команду 'echo "first"' по ssh
       Тогда код выхода команды должен быть '0'
       Тогда я закрываю ssh соединение
 
     Сценарий: Пример проверки результата выполнения команды
-      Пусть я открываю ssh соединение к '${SSH_HOST}:${SSH_PORT}' от имени '${SSH_USERNAME}' с ключом '${SSH_PEM}'
+      Пусть я открываю ssh соединение к '${SSH_HOST}:${SSH_PORT}' от имени '${SSH_USERNAME}' с ключом '${SSH_DEFAULT_PEM}'
       Когда я запускаю команду 'ls -a' по ssh
       Тогда результат выполнения команды соответствует:
         """
@@ -77,7 +81,7 @@
 
     @force
     Сценарий: Пример проверки результата выполнения команды в фоне без прерывания процесса
-      Пусть я открываю ssh соединение к '${SSH_HOST}:${SSH_PORT}' от имени '${SSH_USERNAME}' с ключом '${SSH_PEM}'
+      Пусть я открываю ssh соединение к '${SSH_HOST}:${SSH_PORT}' от имени '${SSH_USERNAME}' с ключом '${SSH_DEFAULT_PEM}'
       Тогда я запускаю ssh команду 'sleep 1 && echo "first"' в фоне
       И я жду '1' секунды
       Затем я завершаю команду запущенную в фоне
@@ -89,7 +93,7 @@
 
     @force
     Сценарий: Пример проверки результата выполнения команды в фоне с прерыванием процесса через 1 секунду
-      Пусть я открываю ssh соединение к '${SSH_HOST}:${SSH_PORT}' от имени '${SSH_USERNAME}' с ключом '${SSH_PEM}'
+      Пусть я открываю ssh соединение к '${SSH_HOST}:${SSH_PORT}' от имени '${SSH_USERNAME}' с ключом '${SSH_DEFAULT_PEM}'
       Тогда я запускаю ssh команду 'sleep 1 && echo "first" && sleep 1 && echo "second"' в фоне
       И я жду '1' секунды
       Затем я завершаю команду запущенную в фоне
@@ -101,7 +105,7 @@
 
     @force
     Сценарий: Пример проверки результата нескольких команд в фоне
-      Пусть я открываю ssh соединение к '${SSH_HOST}:${SSH_PORT}' от имени '${SSH_USERNAME}' с ключом '${SSH_PEM}'
+      Пусть я открываю ssh соединение к '${SSH_HOST}:${SSH_PORT}' от имени '${SSH_USERNAME}' с ключом '${SSH_DEFAULT_PEM}'
 
       Тогда я запускаю ssh команду 'sleep 1 && echo "first" && sleep 2 && echo "second"' в фоне
       И сохраняю идентификатор команды в переменную 'FIRST'
@@ -130,7 +134,7 @@
   Правило: SFTP
 
     Сценарий: Пример загрузки файла через sftp
-      Пусть я открываю ssh соединение к '${SSH_HOST}:${SSH_PORT}' от имени '${SSH_USERNAME}' с ключом '${SSH_PEM}'
+      Пусть я открываю ssh соединение к '${SSH_HOST}:${SSH_PORT}' от имени '${SSH_USERNAME}' с ключом '${SSH_DEFAULT_PEM}'
       Затем я загружаю файл 'artifacts/upload/example.txt' по sftp как '/app/example.txt'
 
       Тогда я запускаю команду '[ -f "/app/example.txt" ] && echo true || echo false' по ssh
@@ -141,7 +145,7 @@
       Тогда я закрываю ssh соединение
 
     Сценарий: Пример скачивания файла через sftp
-      Пусть я открываю ssh соединение к '${SSH_HOST}:${SSH_PORT}' от имени '${SSH_USERNAME}' с ключом '${SSH_PEM}'
+      Пусть я открываю ssh соединение к '${SSH_HOST}:${SSH_PORT}' от имени '${SSH_USERNAME}' с ключом '${SSH_DEFAULT_PEM}'
       Затем я запускаю команду 'echo "DOWNLOAD" > /app/example.txt' по ssh
 
       Затем я скачиваю файл '/app/example.txt' по sftp как 'artifacts/download/example.txt'
@@ -150,3 +154,72 @@
 
       Затем я запускаю команду 'rm -rf /app/download.txt' по ssh
       Тогда я закрываю ssh соединение
+
+  Правило: Парсинг результата
+
+    Сценарий: Пример парсинга json
+      #Note: подробнее https://github.com/json-path/JsonPath
+      Пусть я открываю ssh соединение к '${SSH_HOST}:${SSH_PORT}' от имени '${SSH_USERNAME}' с ключом '${SSH_DEFAULT_PEM}'
+      Когда я открываю файл 'artifacts/parsers/example.json'
+      Тогда я сохраняю результат в переменной 'JSON'
+      Затем я запускаю команду 'printf '${JSON}'' по ssh
+      Тогда я проверяю результат по схеме 'artifacts/schemas/json.json'
+      И результат содержит '3' записи
+      И сумма '$..remoteAS' в результате равна '196656.0'
+      И в результате:
+        | $.[0].localAS  | равно         | 65551                |
+        | $.[0].remoteAS | больше        | 65550                |
+        | $.[0].remoteIp | соответствует | ^\d+\.\d+\.\d+\.\d+$ |
+        | $.[1].status   | меньше        | 1                    |
+        | $.[2].status   | не равно      | 0                    |
+        | $.[2].routerId | содержит      | 192                  |
+
+    Сценарий: Пример парсинга xml
+      #Note: подробнее https://github.com/json-path/JsonPath
+      Пусть я открываю ssh соединение к '${SSH_HOST}:${SSH_PORT}' от имени '${SSH_USERNAME}' с ключом '${SSH_DEFAULT_PEM}'
+      Когда я открываю файл 'artifacts/parsers/example.xml'
+      Тогда я сохраняю результат в переменной 'XML'
+      Затем я запускаю команду 'printf '${XML}'' по ssh
+      Тогда я проверяю результат по схеме 'artifacts/schemas/xml.xsd'
+      И сумма '$.root.element.*.remoteAS' в результате равна '196656.0'
+      И в результате:
+        | $.root.element.[0].localAS  | равно         | 65551                |
+        | $.root.element.[0].remoteAS | больше        | 65550                |
+        | $.root.element.[0].remoteIp | соответствует | ^\d+\.\d+\.\d+\.\d+$ |
+        | $.root.element.[1].status   | меньше        | 1                    |
+        | $.root.element.[2].status   | не равно      | 0                    |
+        | $.root.element.[2].routerId | содержит      | 192                  |
+
+    Сценарий: Пример парсинга yaml
+      #Note: подробнее https://github.com/json-path/JsonPath
+      Пусть я открываю ssh соединение к '${SSH_HOST}:${SSH_PORT}' от имени '${SSH_USERNAME}' с ключом '${SSH_DEFAULT_PEM}'
+      Когда я открываю файл 'artifacts/parsers/example.yaml'
+      Тогда я сохраняю результат в переменной 'YAML'
+      Затем я запускаю команду 'printf '\"${YAML}"\'' по ssh
+      Тогда я проверяю результат по схеме 'artifacts/schemas/yaml.json'
+      И результат содержит '3' записи
+      И сумма '$..remoteAS' в результате равна '196656.0'
+      И в результате:
+        | $.[0].localAS  | равно         | 65551                |
+        | $.[0].remoteAS | больше        | 65550                |
+        | $.[0].remoteIp | соответствует | ^\d+\.\d+\.\d+\.\d+$ |
+        | $.[1].status   | меньше        | 1                    |
+        | $.[2].status   | не равно      | 0                    |
+        | $.[2].routerId | содержит      | 192                  |
+
+    Сценарий: Пример парсинга результата по шаблону
+      #Note: подробнее https://github.com/sonalake/utah-parser, https://github.com/json-path/JsonPath
+      Пусть я открываю ssh соединение к '${SSH_HOST}:${SSH_PORT}' от имени '${SSH_USERNAME}' с ключом '${SSH_DEFAULT_PEM}'
+      Когда я разбираю файл 'artifacts/parsers/example.txt' используя шаблон 'artifacts/templates/parser.xml'
+      Тогда я сохраняю результат в переменной 'TXT'
+      Затем я запускаю команду 'printf '${TXT}'' по ssh
+      И разбираю результат выполнения команды используя шаблон 'artifacts/templates/parser.xml'
+      Тогда результат содержит '3' записи
+      И сумма '$..localAS' в результате равна '196653.0'
+      И в результате:
+        | $.[0].localAS  | равно         | 65551                |
+        | $.[0].remoteAS | больше        | 65550                |
+        | $.[0].remoteIp | соответствует | ^\d+\.\d+\.\d+\.\d+$ |
+        | $.[1].status   | меньше        | 1                    |
+        | $.[2].status   | не равно      | 0                    |
+        | $.[2].routerId | содержит      | 192                  |

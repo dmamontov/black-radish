@@ -49,5 +49,16 @@ dependencies {
 
     api("net.objecthunter:exp4j:0.4.8")
 
+    api("org.apache.tika:tika-core:2.6.0")
+
+    api("org.json:json:20220924")
+    api("com.networknt:json-schema-validator:1.0.76")
     api("com.google.code.gson:gson:2.10.1")
+
+    api("org.yaml:snakeyaml:1.32")
+
+    api("com.sonalake:utah-parser:1.1.0")
+
+    api("com.jayway.jsonpath:json-path:2.7.0")
+    api("com.jayway.jsonpath:json-path-assert:2.7.0")
 }

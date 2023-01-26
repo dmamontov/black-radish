@@ -6,7 +6,8 @@ import io.cucumber.java.ru.Затем
 import io.cucumber.java.ru.Когда
 import io.cucumber.java.ru.Тогда
 import tech.mamontov.blackradish.core.annotations.Glue
-import tech.mamontov.blackradish.core.utils.Logged
+import tech.mamontov.blackradish.core.interfaces.Logged
+import tech.mamontov.blackradish.core.specs.base.BaseRuSpec
 import tech.mamontov.blackradish.filesystem.enumerated.FileType
 
 @Glue
@@ -67,17 +68,22 @@ class FilesystemRuSpec : Logged, FilesystemSpec() {
 
     @Когда("^[Я|я] получаю структуру директории '(.*?)'( рекурсивно)?$")
     fun list(path: String, recursively: String?) {
-        super.list(path, recursively !== null)
+        super.tree(path, recursively !== null)
     }
 
     @Тогда("^[Д|д]иректория пуста$")
-    override fun dirIsEmpty() {
-        super.dirIsEmpty()
+    override fun directoryIsEmpty() {
+        super.directoryIsEmpty()
     }
 
-    @Когда("^[Я|я] читаю файл '(.*?)'$")
-    override fun read(path: String) {
-        super.read(path)
+    @Когда("^[Я|я] открываю файл '(.*?)'$")
+    fun read(path: String) {
+        super.read(path, null)
+    }
+
+    @Когда("^[Я|я] разбираю файл '(.*?)' используя шаблон '(.*?)'$")
+    override fun parse(path: String, templatePath: String) {
+        super.parse(path, templatePath)
     }
 
     @Тогда("^[С|с]одержимое файла( не)? соответствует:$")
@@ -85,13 +91,23 @@ class FilesystemRuSpec : Logged, FilesystemSpec() {
         super.contentIs(content, not !== null)
     }
 
-    @Тогда("^[Д|д]иректория( не)? содержит:$")
-    fun dirContains(not: String?, dataTable: DataTable) {
-        super.dirContains(dataTable, not !== null)
+    @Тогда("^[С|с]одержимое файла:$")
+    fun contentMatch(dataTable: DataTable) {
+        super.contentMatch(dataTable, BaseRuSpec.toComparisonOperation)
     }
 
-    @Тогда("^[С|с]одержимое файлов '(.*?)' и '(.*?)' равно$")
-    override fun equals(first: String, second: String) {
-        super.equals(first, second)
+    @Тогда("^[Ф|ф]айл содержит( не менее)? '(\\d+)' строк[у|и]?$")
+    fun lines(min: String?, count: Int) {
+        super.linesCount(min !== null, count)
+    }
+
+    @Тогда("^[Д|д]иректория( не)? содержит:$")
+    fun dirContains(not: String?, dataTable: DataTable) {
+        super.directoryContains(dataTable, not !== null)
+    }
+
+    @Тогда("^[С|с]одержимое файлов '(.*?)' и '(.*?)' идентично$")
+    override fun contentEquals(first: String, second: String) {
+        super.contentEquals(first, second)
     }
 }

@@ -1,6 +1,6 @@
 package tech.mamontov.blackradish.core.properties
 
-import tech.mamontov.blackradish.core.utils.ThreadFuture
+import tech.mamontov.blackradish.core.interfaces.ThreadFuture
 
 class ThreadFutureProperty {
     companion object {

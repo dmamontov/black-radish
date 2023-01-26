@@ -1,6 +1,6 @@
 package tech.mamontov.blackradish.filesystem.properties
 
-import tech.mamontov.blackradish.core.utils.Logged
+import tech.mamontov.blackradish.core.interfaces.Logged
 
 class ThreadFilesProperty : Logged {
     companion object {

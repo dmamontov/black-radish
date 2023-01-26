@@ -13,7 +13,7 @@ import io.cucumber.messages.types.Scenario
 import io.cucumber.messages.types.Step
 import io.cucumber.messages.types.TableRow
 import io.cucumber.plugin.event.TestSourceRead
-import tech.mamontov.blackradish.core.utils.Logged
+import tech.mamontov.blackradish.core.interfaces.Logged
 import tech.mamontov.blackradish.core.utils.formatter.ast.nodes.AstNode
 import tech.mamontov.blackradish.core.utils.formatter.ast.nodes.BackgroundNode
 import tech.mamontov.blackradish.core.utils.formatter.ast.nodes.ExamplesNode

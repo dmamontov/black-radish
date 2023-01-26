@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<root>
+    <element>
+        <localAS>65551</localAS>
+        <remoteAS>65551</remoteAS>
+        <remoteIp>10.10.10.10</remoteIp>
+        <routerId>192.0.2.1</routerId>
+        <status>5</status>
+        <uptime>10:37:12</uptime>
+    </element>
+    <element>
+        <localAS>65551</localAS>
+        <remoteAS>65552</remoteAS>
+        <remoteIp>10.10.100.1</remoteIp>
+        <routerId>192.0.2.1</routerId>
+        <status>0</status>
+        <uptime>10:38:27</uptime>
+    </element>
+    <element>
+        <localAS>65551</localAS>
+        <remoteAS>65553</remoteAS>
+        <remoteIp>10.100.10.9</remoteIp>
+        <routerId>192.0.2.1</routerId>
+        <status>1</status>
+        <uptime>07:55:38</uptime>
+    </element>
+</root>

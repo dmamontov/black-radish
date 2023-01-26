@@ -1,6 +1,6 @@
 package tech.mamontov.blackradish.core.utils.formatter
 
-import tech.mamontov.blackradish.core.utils.Logged
+import tech.mamontov.blackradish.core.interfaces.Logged
 import java.io.Closeable
 import java.io.Flushable
 

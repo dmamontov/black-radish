@@ -1,7 +1,7 @@
 package tech.mamontov.blackradish.command.properties
 
 import tech.mamontov.blackradish.command.data.CommandResult
-import tech.mamontov.blackradish.core.utils.Logged
+import tech.mamontov.blackradish.core.interfaces.Logged
 
 class ThreadCommandResultProperty : Logged {
     companion object {

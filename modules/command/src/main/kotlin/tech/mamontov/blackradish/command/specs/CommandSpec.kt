@@ -5,17 +5,21 @@ import io.cucumber.docstring.DocString
 import io.qameta.allure.Allure
 import org.apache.commons.io.output.ByteArrayOutputStream
 import org.assertj.core.api.Assertions
+import tech.mamontov.blackradish.command.commands.LocalCommand
 import tech.mamontov.blackradish.command.data.CommandResult
+import tech.mamontov.blackradish.command.data.CommandThreadFuture
+import tech.mamontov.blackradish.command.interfaces.Command
 import tech.mamontov.blackradish.command.properties.ThreadCommandResultProperty
 import tech.mamontov.blackradish.command.properties.ThreadTimeoutProperty
-import tech.mamontov.blackradish.command.utils.Command
-import tech.mamontov.blackradish.command.utils.CommandThreadFuture
-import tech.mamontov.blackradish.command.utils.LocalCommand
+import tech.mamontov.blackradish.core.data.Result
+import tech.mamontov.blackradish.core.interfaces.Logged
+import tech.mamontov.blackradish.core.interfaces.ThreadFuture
+import tech.mamontov.blackradish.core.parsers.Parser
+import tech.mamontov.blackradish.core.parsers.TemplateParser
+import tech.mamontov.blackradish.core.properties.ThreadContentProperty
 import tech.mamontov.blackradish.core.properties.ThreadFutureProperty
 import tech.mamontov.blackradish.core.properties.ThreadPoolProperty
-import tech.mamontov.blackradish.core.specs.BaseSpec
-import tech.mamontov.blackradish.core.utils.Logged
-import tech.mamontov.blackradish.core.utils.ThreadFuture
+import tech.mamontov.blackradish.core.specs.base.BaseSpec
 import java.util.UUID
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.TimeUnit
@@ -47,6 +51,7 @@ abstract class CommandSpec : Logged, BaseSpec() {
         if (commandResult !== null) {
             ThreadCommandResultProperty.set(commandResult)
             this.attach(commandResult)
+            this.parse(commandResult)
         }
 
         ThreadTimeoutProperty.reset()
@@ -86,7 +91,7 @@ abstract class CommandSpec : Logged, BaseSpec() {
 
             commandResult = CommandResult(
                 future.command.exitCode(),
-                future.command.read()
+                future.command.read(),
             )
         } catch (e: Exception) {
             Assertions.fail<Any>(e.message, e)
@@ -97,6 +102,7 @@ abstract class CommandSpec : Logged, BaseSpec() {
         if (commandResult !== null) {
             ThreadCommandResultProperty.set(commandResult)
             this.attach(commandResult)
+            this.parse(commandResult)
         }
     }
 
@@ -148,10 +154,20 @@ abstract class CommandSpec : Logged, BaseSpec() {
 
         ThreadCommandResultProperty.set(commandResult!!)
         this.attach(commandResult)
+        this.parse(commandResult)
     }
 
     open fun save(variable: String) {
         super.save(this.getResult().content, variable)
+    }
+
+    open fun parseResult(templatePath: String) {
+        val result = this.getResult()
+        try {
+            this.parse(result, TemplateParser(this.uri(templatePath)!!))
+        } catch (e: Exception) {
+            Assertions.fail<Any>(e.message, e)
+        }
     }
 
     open fun exitCode(code: Long) {
@@ -176,7 +192,18 @@ abstract class CommandSpec : Logged, BaseSpec() {
     }
 
     protected fun attach(result: CommandResult) {
-        Allure.addAttachment("pipe.json", "application/json", Gson().toJson(result).toString())
+        Allure.addAttachment("command.json", "application/json", Gson().toJson(result).toString())
+    }
+
+    protected fun parse(result: CommandResult, parser: Parser? = null) {
+        val contentResult = Result(result.content, parser)
+        if (contentResult.json === null) {
+            return
+        }
+
+        ThreadContentProperty.set(contentResult)
+
+        Allure.addAttachment("parsed.json", "application/json", contentResult.json.toString())
     }
 
     private fun getResult(): CommandResult {

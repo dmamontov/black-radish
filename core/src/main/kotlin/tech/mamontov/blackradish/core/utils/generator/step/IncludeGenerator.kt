@@ -9,8 +9,8 @@ import tech.mamontov.blackradish.core.data.StepInclude
 import tech.mamontov.blackradish.core.exceptions.IncludeDepthException
 import tech.mamontov.blackradish.core.exceptions.IncludeException
 import tech.mamontov.blackradish.core.exceptions.IncludeSkipException
+import tech.mamontov.blackradish.core.interfaces.Logged
 import tech.mamontov.blackradish.core.properties.ConfigurationProperty
-import tech.mamontov.blackradish.core.utils.Logged
 import tech.mamontov.blackradish.core.utils.reflecation.Reflecation
 import java.net.URI
 import java.net.URISyntaxException
