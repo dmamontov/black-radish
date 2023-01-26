@@ -9,3 +9,5 @@ sticky_navigation: true
 prev_next_buttons_location: bottom
 search_enabled: true
 hljs_style: github-gist
+languages: ["en", "ru"]
+exclude_from_localizations: ["javascript", "images", "css"]
