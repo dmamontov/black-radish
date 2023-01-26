@@ -7,6 +7,7 @@ plugins {
 repositories {
     mavenLocal()
     mavenCentral()
+    maven("https://jitpack.io")
     gradlePluginPortal()
 }
 
@@ -24,6 +25,7 @@ subprojects {
     dependencies {
         api("org.aspectj:aspectjrt:1.9.19")
         api("org.aspectj:aspectjweaver:1.9.19")
+        api("com.github.Steppschuh:Java-Markdown-Generator:1.3.2")
     }
 
     configurations {
