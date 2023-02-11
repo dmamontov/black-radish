@@ -1,6 +1,6 @@
 # language: en
 
-@example
+@examples
 Feature: Files *.xls, *.xlsx
 
   This feature is an example of working with files *.xls, *.xlsx

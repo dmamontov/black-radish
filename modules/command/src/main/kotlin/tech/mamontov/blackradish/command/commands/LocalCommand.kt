@@ -9,13 +9,32 @@ import tech.mamontov.blackradish.core.interfaces.Logged
 import java.nio.charset.Charset
 import java.util.concurrent.TimeUnit
 
+/**
+ * Local command
+ *
+ * @author Dmitry Mamontov
+ *
+ * @property process ForkerProcess?
+ * @property buffer ByteArrayOutputStream?
+ */
 open class LocalCommand : Logged, Command {
     private var process: ForkerProcess? = null
     private var buffer: ByteArrayOutputStream? = null
 
+    /**
+     * Empty constructor.
+     *
+     * @constructor
+     */
     constructor() {
     }
 
+    /**
+     * Constructor with string command.
+     *
+     * @param command String
+     * @constructor
+     */
     constructor(command: String) {
         val builder = ForkerBuilder(prepare(command))
         builder.redirectErrorStream(true)
@@ -23,10 +42,22 @@ open class LocalCommand : Logged, Command {
         this.process = builder.start()
     }
 
+    /**
+     * Constructor with string command and output buffer.
+     *
+     * @param command String
+     * @param buffer ByteArrayOutputStream
+     * @constructor
+     */
     constructor(command: String, buffer: ByteArrayOutputStream) : this(command) {
         this.buffer = buffer
     }
 
+    /**
+     * Read command result.
+     *
+     * @return String
+     */
     override fun read(): String {
         var content = ""
 
@@ -45,14 +76,29 @@ open class LocalCommand : Logged, Command {
         return this.trim(content)
     }
 
+    /**
+     * Get exit code.
+     *
+     * @return Int
+     */
     override fun exitCode(): Int {
         return this.process!!.exitValue()
     }
 
+    /**
+     * Wait command.
+     *
+     * @param seconds Long
+     */
     open fun waitFor(seconds: Long) {
         this.process!!.waitFor(seconds, TimeUnit.SECONDS)
     }
 
+    /**
+     * Non-blocking read command result.
+     *
+     * @return String
+     */
     override fun safeRead(): String {
         if (this.process!!.inputStream.available() <= 0) {
             return ""
@@ -75,8 +121,11 @@ open class LocalCommand : Logged, Command {
         return content
     }
 
-    override fun destroy() {
-        if (!exited()) {
+    /**
+     * Terminate running command.
+     */
+    override fun terminate() {
+        if (!isExited()) {
             this.process!!.waitFor(100, TimeUnit.MILLISECONDS)
 
             this.process!!.destroyForcibly()
@@ -85,7 +134,12 @@ open class LocalCommand : Logged, Command {
         }
     }
 
-    override fun exited(): Boolean {
+    /**
+     * Is exited command.
+     *
+     * @return Boolean
+     */
+    override fun isExited(): Boolean {
         return try {
             this.process!!.exitValue()
             true
@@ -94,11 +148,23 @@ open class LocalCommand : Logged, Command {
         }
     }
 
+    /**
+     * Trim command result.
+     *
+     * @param content String
+     * @return String
+     */
     fun trim(content: String): String {
         return content.trim(' ', '"', '\r', '\n', '\t')
             .replace("\r\n", System.lineSeparator())
     }
 
+    /**
+     * Prepare string command.
+     *
+     * @param command String
+     * @return ArrayList<String>
+     */
     private fun prepare(command: String): ArrayList<String> {
         listOf("bash", "sh").forEach {
             if (OSCommand.hasCommand(it)) {

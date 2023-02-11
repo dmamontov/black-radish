@@ -5,9 +5,20 @@ import org.apache.commons.text.lookup.StringLookup
 import tech.mamontov.blackradish.core.interfaces.Logged
 import java.util.Locale
 
+/**
+ * Fake data lookup for replacement
+ *
+ * @author Dmitry Mamontov
+ */
 class FakerLookup : Logged, StringLookup {
-    override fun lookup(key: String): String? {
-        var variable = key
+    /**
+     * Generate fake data by expression
+     *
+     * @param expression String
+     * @return String?
+     */
+    override fun lookup(expression: String): String? {
+        var variable = expression
 
         var faker = Faker()
 

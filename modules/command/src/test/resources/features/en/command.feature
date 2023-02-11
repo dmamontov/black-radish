@@ -1,82 +1,114 @@
 # language: en
 
-@example
-Feature: Console commands
+@examples @module:command @module:core
+Feature: Command
 
-  This feature is an example of executing commands locally
+  This module provides the ability to work with local commands.
 
-  Rule: Command execution
+  Rule: Running
 
-    Scenario: Example of running a command
+    Scenario: An example of running a command
       When i run command 'echo "example"' locally
 
     Scenario: An example of running a command with a set maximum execution time
-      #Note: after the command is executed, the maximum execution time is reset to the default (module.command.timeout). can be configured in the setting.properties file
+      #Note: After the command is executed, the maximum execution time is reset to the default (module.command.timeout).
       When i set the maximum command execution time to '10' seconds
       Then i run command 'echo "example"' locally
 
-    Scenario: An example of running a command locally every second for the specified time until the content appears
-      Then in less than '10' seconds the output of the local command 'sleep 1 && printf "first\nsecond" && sleep 10 && echo "four"' contains 'second'
+    Scenario: An example of running a command until the content appears within the specified time
+      #Warning: If the command completed before the specified time, it will be restarted.
+      Then in less than '10' seconds the output of the local command 'sleep 1 && printf "hello\nworld" && sleep 10' contains 'world'
 
-    @force
+  @force
+  Rule: Running in the background
+    #Note: At the end of the script execution, the command will be completed automatically.
+    #Note: When using the ``@force`` tag, the command will be force-completed when the script ends.
+
     Scenario: An example of running a command in the background
-      When i run local command 'sleep 1 && echo "first" && sleep 1 && echo "second"' in background
+      When i run local command 'sleep 1 && echo "hello" && sleep 1 && echo "world"' in background
+
+    Scenario: An example of completing a command launched in background
+      When i run local command 'sleep 1 && echo "hello" && sleep 1 && echo "world"' in background
       Then i terminate a command running in background
 
-    @force
-    Scenario: An example of running several commands in the background
-      When i run local command 'sleep 1 && echo "first" && sleep 2 && echo "second"' in background
-      And save the command ID in the variable 'FIRST'
+    Scenario: An example of running multiple commands in background
+      When i run local command 'sleep 1 && echo "hello" && sleep 2 && echo "world"' in background
+      Then save the command ID in the variable 'FIRST'
 
-      Then i run local command 'sleep 1 && echo "three" && sleep 5 && echo "four"' in background
-      And save the command ID in the variable 'SECOND'
+      When i run local command 'sleep 1 && echo "hello" && sleep 5 && echo "world"' in background
+      Then save the command ID in the variable 'SECOND'
 
       Then i terminate a command running in background with id '${FIRST}'
       Then i terminate a command running in background with id '${SECOND}'
 
-  Rule: Result of command execution
-
-    Scenario: An example of saving the result of a command execution to a variable
-      When i run command 'echo "first"' locally
-      Then save the result of the command execution in the variable 'RESULT'
-      Then '${RESULT}' is 'first'
+  Rule: Comparing the result
+    #Note: All comparison operations are supported
 
     Scenario: An example of checking the exit code of a command
       When i run command 'echo "first"' locally
       Then command exit code must be '0'
 
-    Scenario: An example of checking the result of a command
-      When i run command 'printf "first\nsecond"' locally
-      Then command result is:
+    Scenario: An example of comparing the original result
+      When i run command 'echo "200"' locally
+      Then result is '200'
+      And result is different from '100'
+      And result matches '^\d+'
+      And result contains '20'
+      And result is higher than '100'
+      And result is lower than '300'
+
+    Scenario: An example of comparing the original result, variant 2
+      When i run command 'echo "200"' locally
+      Then result is:
         """
-        first
-        second
+        200
+        """
+      And result is different from:
+        """
+        100
+        """
+      And result matches:
+        """
+        ^\d+
+        """
+      And result contains:
+        """
+        20
+        """
+      And result is higher than:
+        """
+        100
+        """
+      And result is lower than:
+        """
+        300
         """
 
-    @force
-    Scenario: An example of checking the result of running a command in the background without interrupting the process.
+  @force
+  Rule: Comparing the result of commands run in background
+    #Note: All comparison operations are supported
+
+    Scenario: An example of checking the result of executing the in background command without interrupting the process
       When i run local command 'sleep 1 && echo "first"' in background
-      Then i wait '2' second
+      Then i wait '1' second
       Then i terminate a command running in background
       Then command exit code must be '0'
-      And command result is:
+      And result is:
         """
         first
         """
 
-    @force
-    Scenario: An example of checking the result of a command execution in the background with the process interrupting after 1 second
+    Scenario: An example of checking the result of executing the in background command with interrupting the process after 1 second
       When i run local command 'sleep 1 && echo "first" && sleep 1 && echo "second"' in background
       Then i wait '1' second
       Then i terminate a command running in background
       Then command exit code must be '143'
-      And command result is:
+      And result is:
         """
         first
         """
 
-    @force
-    Scenario: An example of checking the result of several commands in the background
+    Scenario: An example of checking the result of several commands in background
       When i run local command 'sleep 1 && echo "first" && sleep 2 && echo "second"' in background
       And save the command ID in the variable 'FIRST'
 
@@ -87,7 +119,7 @@ Feature: Console commands
 
       Then i terminate a command running in background with id '${FIRST}'
       Then command exit code must be '0'
-      And command result is:
+      And result is:
         """
         first
         second
@@ -95,73 +127,228 @@ Feature: Console commands
 
       Then i terminate a command running in background with id '${SECOND}'
       Then command exit code must be '143'
-      And command result is:
+      And result is:
         """
         three
         four
         """
 
-  Rule: Result parsing
+  Rule: JsonConverter
 
-    Scenario: An example of parsing json
-      #Note: more https://github.com/json-path/JsonPath
-      When i open file 'artifacts/parsers/example.json'
-      Then i save the result in a variable 'JSON'
-      Then i run command 'printf '${JSON}'' locally
-      Then i check the result according to the scheme 'artifacts/schemas/json.json'
-      And result contains '3' records
-      And sum of '$..remoteAS' results in '196656.0'
-      And as a result:
-        | $.[0].localAS  | is                | 65551                |
-        | $.[0].remoteAS | is higher than    | 65550                |
-        | $.[0].remoteIp | matches           | ^\d+\.\d+\.\d+\.\d+$ |
-        | $.[1].status   | is lower than     | 1                    |
-        | $.[2].status   | is different from | 0                    |
-        | $.[2].routerId | contains          | 192                  |
+    Scenario: An example of checking the number of records in json for equality
+      #File:json: src/test/resources/artifacts/files/example.json
+      When i run command 'printf -- '${file:UTF-8:src/test/resources/artifacts/files/example.json}'' locally
+      Then result contains '2' records
 
-    Scenario: An example of parsing xml
-      #Note: more https://github.com/json-path/JsonPath
-      When i open file 'artifacts/parsers/example.xml'
-      Then i save the result in a variable 'XML'
-      Then i run command 'printf '${XML}'' locally
-      Then i check the result according to the scheme 'artifacts/schemas/xml.xsd'
-      And sum of '$.root.element.*.remoteAS' results in '196656.0'
-      And as a result:
-        | $.root.element.[0].localAS  | is                | 65551                |
-        | $.root.element.[0].remoteAS | is higher than    | 65550                |
-        | $.root.element.[0].remoteIp | matches           | ^\d+\.\d+\.\d+\.\d+$ |
-        | $.root.element.[1].status   | is lower than     | 1                    |
-        | $.root.element.[2].status   | is different from | 0                    |
-        | $.root.element.[2].routerId | contains          | 192                  |
+    Scenario: An example of checking the number of records in json for the minimum number
+      #File:json: src/test/resources/artifacts/files/example.json
+      When i run command 'printf -- '${file:UTF-8:src/test/resources/artifacts/files/example.json}'' locally
+      Then result contains at least '2' records
 
-    Scenario: An example of parsing yaml
-      #Note: more https://github.com/json-path/JsonPath
-      When i open file 'artifacts/parsers/example.yaml'
-      Then i save the result in a variable 'YAML'
-      Then i run command 'printf '\"${YAML}"\'' locally
-      Then i check the result according to the scheme 'artifacts/schemas/yaml.json'
-      And result contains '3' records
-      And sum of '$..remoteAS' results in '196656.0'
-      And as a result:
-        | $.[0].localAS  | is                | 65551                |
-        | $.[0].remoteAS | is higher than    | 65550                |
-        | $.[0].remoteIp | matches           | ^\d+\.\d+\.\d+\.\d+$ |
-        | $.[1].status   | is lower than     | 1                    |
-        | $.[2].status   | is different from | 0                    |
-        | $.[2].routerId | contains          | 192                  |
+    Scenario: An example of json validation against json schema
+      #File:json: src/test/resources/artifacts/files/example.json
+      #File:json: src/test/resources/artifacts/files/schema-json.json
+      When i run command 'printf -- '${file:UTF-8:src/test/resources/artifacts/files/example.json}'' locally
+      Then i check the content against the schema 'artifacts/files/schema-json.json'
 
-    Scenario: An example of parsing a result by a template
-      #Note: more https://github.com/sonalake/utah-parser, https://github.com/json-path/JsonPath
-      When i parse the file 'artifacts/parsers/example.txt' using the template 'artifacts/templates/parser.xml'
-      Then i save the result in a variable 'TXT'
-      Then i run command 'printf '${TXT}'' locally
-      And parse the result of the command using a template 'artifacts/templates/parser.xml'
-      Then result contains '3' records
-      And sum of '$..localAS' results in '196653.0'
-      And as a result:
-        | $.[0].localAS  | is                | 65551                |
-        | $.[0].remoteAS | is higher than    | 65550                |
-        | $.[0].remoteIp | matches           | ^\d+\.\d+\.\d+\.\d+$ |
-        | $.[1].status   | is lower than     | 1                    |
-        | $.[2].status   | is different from | 0                    |
-        | $.[2].routerId | contains          | 192                  |
+    Scenario: An example of summing values in json by json path
+      #File:json: src/test/resources/artifacts/files/example.json
+      When i run command 'printf -- '${file:UTF-8:src/test/resources/artifacts/files/example.json}'' locally
+      Then sum of '$..remoteAS' results in '131103.0'
+
+    Scenario: An example of checking the result of json conversion by json path
+      #Note: All checks are supported similarly to variables
+      #File:json: src/test/resources/artifacts/files/example.json
+      When i run command 'printf -- '${file:UTF-8:src/test/resources/artifacts/files/example.json}'' locally
+      Then as a result:
+        | $.[0].localAS  | is             | 65551 |
+        | $.[0].remoteAS | is higher than | 65550 |
+        | $.[1].localAS  | matches        | ^\d+$ |
+        | $.[1].remoteAS | contains       | 65    |
+
+    Scenario: An example of saving the original json to a variable
+      #File:json: src/test/resources/artifacts/files/example.json
+      When i run command 'printf -- '${file:UTF-8:src/test/resources/artifacts/files/example.json}'' locally
+      Then i save original in a variable 'ORIGINAL'
+      Then '${ORIGINAL}' is '${file:UTF-8:src/test/resources/artifacts/files/example.json}'
+
+    Scenario: An example of saving the result of json conversion to a variable
+      #File:json: src/test/resources/artifacts/files/example.json
+      When i run command 'printf -- '${file:UTF-8:src/test/resources/artifacts/files/example.json}'' locally
+      Then i save the result in a variable 'RESULT'
+      Then '${RESULT}' is '${file:UTF-8:src/test/resources/artifacts/files/converted-json.json}'
+
+    Scenario: An example of saving the result of converting json by json path to a variable
+      #File:json: src/test/resources/artifacts/files/example.json
+      When i run command 'printf -- '${file:UTF-8:src/test/resources/artifacts/files/example.json}'' locally
+      Then i save the result '$.[0].localAS' in a variable 'LOCAL_AS'
+      Then '${LOCAL_AS}' is '65551'
+
+  Rule: YamlConverter
+
+    Scenario: An example of checking the number of records in yaml for equality
+      #File:yaml: src/test/resources/artifacts/files/example.yaml
+      #File:json: src/test/resources/artifacts/files/converted-yaml.json
+      When i run command 'printf -- '${file:UTF-8:src/test/resources/artifacts/files/example.yaml}'' locally
+      Then result contains '2' records
+
+    Scenario: An example of checking the number of records in yaml for the minimum number
+      #File:yaml: src/test/resources/artifacts/files/example.yaml
+      #File:json: src/test/resources/artifacts/files/converted-yaml.json
+      When i run command 'printf -- '${file:UTF-8:src/test/resources/artifacts/files/example.yaml}'' locally
+      Then result contains at least '2' records
+
+    Scenario: An example of yaml validation against json schema
+      #File:yaml: src/test/resources/artifacts/files/example.yaml
+      #File:json: src/test/resources/artifacts/files/converted-yaml.json
+      #File:json: src/test/resources/artifacts/files/schema-yaml.json
+      When i run command 'printf -- '${file:UTF-8:src/test/resources/artifacts/files/example.yaml}'' locally
+      Then i check the content against the schema 'artifacts/files/schema-yaml.json'
+
+    Scenario: An example of summing values in yaml by json path
+      #File:yaml: src/test/resources/artifacts/files/example.yaml
+      #File:json: src/test/resources/artifacts/files/converted-yaml.json
+      When i run command 'printf -- '${file:UTF-8:src/test/resources/artifacts/files/example.yaml}'' locally
+      Then sum of '$..remoteAS' results in '131103.0'
+
+    Scenario: An example of checking the result of the yaml transformation by json path
+      #Note: All checks are supported similarly to variables
+      #File:yaml: src/test/resources/artifacts/files/example.yaml
+      #File:json: src/test/resources/artifacts/files/converted-yaml.json
+      When i run command 'printf -- '${file:UTF-8:src/test/resources/artifacts/files/example.yaml}'' locally
+      Then as a result:
+        | $.[0].localAS  | is             | 65551 |
+        | $.[0].remoteAS | is higher than | 65550 |
+        | $.[1].localAS  | matches        | ^\d+$ |
+        | $.[1].remoteAS | contains       | 65    |
+
+    Scenario: An example of saving the original yaml to a variable
+      #File:yaml: src/test/resources/artifacts/files/example.yaml
+      When i run command 'printf -- '${file:UTF-8:src/test/resources/artifacts/files/example.yaml}'' locally
+      Then i save original in a variable 'ORIGINAL'
+      Then '${ORIGINAL}' is '${file:UTF-8:src/test/resources/artifacts/files/example.yaml}'
+
+    Scenario: An example of saving the result of yaml conversion to a variable
+      #File:yaml: src/test/resources/artifacts/files/example.yaml
+      #File:json: src/test/resources/artifacts/files/converted-yaml.json
+      When i run command 'printf -- '${file:UTF-8:src/test/resources/artifacts/files/example.yaml}'' locally
+      Then i save the result in a variable 'RESULT'
+      Then '${RESULT}' is '${file:UTF-8:src/test/resources/artifacts/files/converted-yaml.json}'
+
+    Scenario: An example of saving the result of converting yaml by json path to a variable.
+      #File:yaml: src/test/resources/artifacts/files/example.yaml
+      #File:json: src/test/resources/artifacts/files/converted-yaml.json
+      When i run command 'printf -- '${file:UTF-8:src/test/resources/artifacts/files/example.yaml}'' locally
+      Then i save the result '$.[0].localAS' in a variable 'LOCAL_AS'
+      Then '${LOCAL_AS}' is '65551'
+
+  Rule: XmlConverter
+
+    Scenario: Example of xml validation according to xsd schema
+      #File:xml: src/test/resources/artifacts/files/example.xml
+      #File:json: src/test/resources/artifacts/files/converted-xml.json
+      #File:bin: src/test/resources/artifacts/files/schema-xml.xsd
+      When i run command 'printf -- '${file:UTF-8:src/test/resources/artifacts/files/example.xml}'' locally
+      Then i check the content against the schema 'artifacts/files/schema-xml.xsd'
+
+    Scenario: An example of summing values in xml by json path
+      #File:xml: src/test/resources/artifacts/files/example.xml
+      #File:json: src/test/resources/artifacts/files/converted-xml.json
+      When i run command 'printf -- '${file:UTF-8:src/test/resources/artifacts/files/example.xml}'' locally
+      Then sum of '$.root.element.*.remoteAS' results in '131103.0'
+
+    Scenario: An example of checking the result of xml transformation by json path
+      #Note: All checks are supported similarly to variables
+      #File:xml: src/test/resources/artifacts/files/example.xml
+      #File:json: src/test/resources/artifacts/files/converted-xml.json
+      When i run command 'printf -- '${file:UTF-8:src/test/resources/artifacts/files/example.xml}'' locally
+      Then as a result:
+        | $.root.element.[0].localAS  | is             | 65551 |
+        | $.root.element.[0].remoteAS | is higher than | 65550 |
+        | $.root.element.[1].localAS  | matches        | ^\d+$ |
+        | $.root.element.[1].remoteAS | contains       | 65    |
+
+    Scenario: An example of saving the original xml to a variable
+      #File:xml: src/test/resources/artifacts/files/example.xml
+      When i run command 'printf -- '${file:UTF-8:src/test/resources/artifacts/files/example.xml}'' locally
+      Then i save original in a variable 'ORIGINAL'
+      Then '${ORIGINAL}' is '${file:UTF-8:src/test/resources/artifacts/files/example.xml}'
+
+    Scenario: An example of saving the result of xml transformation into a variable
+      #File:xml: src/test/resources/artifacts/files/example.xml
+      #File:json: src/test/resources/artifacts/files/converted-xml.json
+      When i run command 'printf -- '${file:UTF-8:src/test/resources/artifacts/files/example.xml}'' locally
+      Then i save the result in a variable 'RESULT'
+      Then '${RESULT}' is '${file:UTF-8:src/test/resources/artifacts/files/converted-xml.json}'
+
+    Scenario: An example of saving the result of converting xml by json path to a variable
+      #File:xml: src/test/resources/artifacts/files/example.xml
+      #File:json: src/test/resources/artifacts/files/converted-xml.json
+      When i run command 'printf -- '${file:UTF-8:src/test/resources/artifacts/files/example.xml}'' locally
+      Then i save the result '$.root.element.[0].localAS' in a variable 'LOCAL_AS'
+      Then '${LOCAL_AS}' is '65551'
+
+  Rule: TemplateConverter
+
+    Scenario: An example of checking the number of records converted by template for equality
+      #File:bin: src/test/resources/artifacts/files/example.txt
+      #File:bin: src/test/resources/artifacts/files/template.xml
+      #File:bin: src/test/resources/artifacts/files/converted-txt.json
+      When i run command 'printf -- '${file:UTF-8:src/test/resources/artifacts/files/example.txt}'' locally
+      Then i convert the result by template 'artifacts/files/template.xml'
+      Then result contains '2' records
+
+    Scenario: An example of checking the number of records converted by template for the minimum number
+      #File:bin: src/test/resources/artifacts/files/example.txt
+      #File:bin: src/test/resources/artifacts/files/template.xml
+      #File:bin: src/test/resources/artifacts/files/converted-txt.json
+      When i run command 'printf -- '${file:UTF-8:src/test/resources/artifacts/files/example.txt}'' locally
+      Then i convert the result by template 'artifacts/files/template.xml'
+      Then result contains at least '2' records
+
+    Scenario: An example of summing values in converted data by template and json path
+      #File:bin: src/test/resources/artifacts/files/example.txt
+      #File:bin: src/test/resources/artifacts/files/template.xml
+      #File:bin: src/test/resources/artifacts/files/converted-txt.json
+      When i run command 'printf -- '${file:UTF-8:src/test/resources/artifacts/files/example.txt}'' locally
+      Then i convert the result by template 'artifacts/files/template.xml'
+      Then sum of '$..remoteAS' results in '131103.0'
+
+    Scenario: An example of checking the result of data conversion by template and json path
+      #Note: All checks are supported similarly to variables
+      #File:bin: src/test/resources/artifacts/files/example.txt
+      #File:bin: src/test/resources/artifacts/files/template.xml
+      #File:bin: src/test/resources/artifacts/files/converted-txt.json
+      When i run command 'printf -- '${file:UTF-8:src/test/resources/artifacts/files/example.txt}'' locally
+      Then i convert the result by template 'artifacts/files/template.xml'
+      Then as a result:
+        | $.[0].localAS  | is             | 65551 |
+        | $.[0].remoteAS | is higher than | 65550 |
+        | $.[1].localAS  | matches        | ^\d+$ |
+        | $.[1].remoteAS | contains       | 65    |
+
+    Scenario: An example of saving the original converted data by template into a variable
+      #File:bin: src/test/resources/artifacts/files/example.txt
+      #File:bin: src/test/resources/artifacts/files/template.xml
+      When i run command 'printf -- '${file:UTF-8:src/test/resources/artifacts/files/example.txt}'' locally
+      Then i convert the result by template 'artifacts/files/template.xml'
+      Then i save original in a variable 'ORIGINAL'
+      And '${ORIGINAL}' is '${file:UTF-8:src/test/resources/artifacts/files/example.txt}'
+
+    Scenario: An example of saving the result of converted data by template into a variable
+      #File:bin: src/test/resources/artifacts/files/example.txt
+      #File:bin: src/test/resources/artifacts/files/template.xml
+      #File:bin: src/test/resources/artifacts/files/converted-txt.json
+      When i run command 'printf -- '${file:UTF-8:src/test/resources/artifacts/files/example.txt}'' locally
+      Then i convert the result by template 'artifacts/files/template.xml'
+      Then i save the result in a variable 'RESULT'
+      And '${RESULT}' is '${file:UTF-8:src/test/resources/artifacts/files/converted-txt.json}'
+
+    Scenario: An example of saving the result of converted data by template and json path into a variable
+      #File:bin: src/test/resources/artifacts/files/example.txt
+      #File:bin: src/test/resources/artifacts/files/template.xml
+      #File:bin: src/test/resources/artifacts/files/converted-txt.json
+      When i run command 'printf -- '${file:UTF-8:src/test/resources/artifacts/files/example.txt}'' locally
+      Then i convert the result by template 'artifacts/files/template.xml'
+      Then i save the result '$.[0].localAS' in a variable 'LOCAL_AS'
+      And '${LOCAL_AS}' is '65551'

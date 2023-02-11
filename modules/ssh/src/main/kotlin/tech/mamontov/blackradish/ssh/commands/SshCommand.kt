@@ -6,22 +6,29 @@ import org.assertj.core.api.Assertions
 import tech.mamontov.blackradish.command.commands.LocalCommand
 import tech.mamontov.blackradish.core.interfaces.Logged
 import tech.mamontov.blackradish.ssh.listeners.OutputListener
-import tech.mamontov.blackradish.ssh.properties.ThreadSshProperty
+import tech.mamontov.blackradish.ssh.storages.SshClientStorage
 import java.util.concurrent.TimeUnit
 
+/**
+ * Ssh command
+ *
+ * @property task AbstractCommandTask
+ * @property buffer StringBuffer
+ * @constructor
+ */
 class SshCommand(command: String) : Logged, LocalCommand() {
     private val task: AbstractCommandTask
     private val buffer: StringBuffer
 
     init {
-        if (ThreadSshProperty.get() === null) {
+        if (SshClientStorage.get() === null) {
             Assertions.fail<Any>("SSH connection not open")
         }
 
         val buffer = StringBuffer()
 
-        val ssh = ThreadSshProperty.get()!!
-        val task = object : AbstractCommandTask(ssh.connection, command) {
+        val client = SshClientStorage.get()!!
+        val task = object : AbstractCommandTask(client.connection, command) {
             override fun beforeExecuteCommand(session: SessionChannelNG) {
                 session.addEventListener(OutputListener(buffer))
             }
@@ -30,24 +37,44 @@ class SshCommand(command: String) : Logged, LocalCommand() {
                 while (session.inputStream.read() > -1);
             }
         }
-        ssh.addTask(task)
+        client.addTask(task)
 
         this.buffer = buffer
         this.task = task
     }
 
+    /**
+     * Read command result.
+     *
+     * @return String
+     */
     override fun read(): String {
         return this.trim(this.safeRead())
     }
 
+    /**
+     * Non-blocking read command result.
+     *
+     * @return String
+     */
     override fun safeRead(): String {
         return buffer.toString()
     }
 
+    /**
+     * Wait command.
+     *
+     * @param seconds Long
+     */
     override fun waitFor(seconds: Long) {
         this.task.waitFor(TimeUnit.SECONDS.toMillis(seconds))
     }
 
+    /**
+     * Get exit code.
+     *
+     * @return Int
+     */
     override fun exitCode(): Int {
         if (this.task.exitCode == -2147483648) {
             return 143
@@ -56,8 +83,11 @@ class SshCommand(command: String) : Logged, LocalCommand() {
         return this.task.exitCode
     }
 
-    override fun destroy() {
-        if (!exited()) {
+    /**
+     * Terminate running command.
+     */
+    override fun terminate() {
+        if (!isExited()) {
             this.task.waitFor(100)
 
             this.task.close()
@@ -66,7 +96,12 @@ class SshCommand(command: String) : Logged, LocalCommand() {
         }
     }
 
-    override fun exited(): Boolean {
+    /**
+     * Is exited command.
+     *
+     * @return Boolean
+     */
+    override fun isExited(): Boolean {
         return this.task.isDone
     }
 }

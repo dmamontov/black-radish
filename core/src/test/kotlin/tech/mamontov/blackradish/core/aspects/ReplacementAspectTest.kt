@@ -3,8 +3,8 @@ package tech.mamontov.blackradish.core.aspects
 import org.assertj.core.api.Assertions
 import org.assertj.core.api.Assertions.assertThat
 import org.testng.annotations.Test
-import tech.mamontov.blackradish.core.plugins.ConfigurationLoader
-import tech.mamontov.blackradish.core.properties.ConfigurationProperty
+import tech.mamontov.blackradish.core.plugins.Loader
+import tech.mamontov.blackradish.core.storages.ConfigurationStorage
 
 class ReplacementAspectTest {
     @Test
@@ -65,9 +65,9 @@ class ReplacementAspectTest {
     @Test
     fun replacePropertyTest() {
         System.setProperty("env", "test")
-        ConfigurationLoader.load(
+        Loader.loadFiles(
             arrayListOf("common", ReplacementAspect.replace("\${env}")),
-            ConfigurationProperty::add,
+            ConfigurationStorage::add,
         )
 
         assertThat(ReplacementAspect.replace("\${FOUR}")).isEqualTo("4")

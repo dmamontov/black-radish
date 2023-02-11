@@ -10,61 +10,101 @@ import org.apache.commons.lang3.math.NumberUtils
 import org.assertj.core.api.Assertions
 import tech.mamontov.blackradish.core.asserts.FileAssert
 import tech.mamontov.blackradish.core.asserts.NumberAssert
-import tech.mamontov.blackradish.core.data.Result
+import tech.mamontov.blackradish.core.data.ConvertedResult
 import tech.mamontov.blackradish.core.enumerated.ComparisonOperation
-import tech.mamontov.blackradish.core.helpers.UriHelper
+import tech.mamontov.blackradish.core.helpers.AnyObject
+import tech.mamontov.blackradish.core.helpers.Filesystem
+import tech.mamontov.blackradish.core.interfaces.Converter
 import tech.mamontov.blackradish.core.interfaces.Logged
-import tech.mamontov.blackradish.core.parsers.Parser
-import tech.mamontov.blackradish.core.parsers.TemplateParser
-import tech.mamontov.blackradish.core.properties.ThreadContentProperty
-import tech.mamontov.blackradish.core.specs.database.DatabaseSpec
+import tech.mamontov.blackradish.core.specs.base.BaseSpec
+import tech.mamontov.blackradish.core.storages.ConvertedResultStorage
+import tech.mamontov.blackradish.filesystem.converters.DirectoryTreeConverter
 import tech.mamontov.blackradish.filesystem.enumerated.FileType
-import tech.mamontov.blackradish.filesystem.properties.ThreadFileContentProperty
-import tech.mamontov.blackradish.filesystem.properties.ThreadFilesProperty
 import java.io.File
-import java.io.FileInputStream
 import java.net.URI
 import java.nio.charset.Charset
 
-abstract class FilesystemSpec : Logged, DatabaseSpec() {
+/**
+ * Filesystem spec
+ *
+ * @author Dmitry Mamontov
+ *
+ * @property baseSpec BaseSpec
+ */
+open class FilesystemSpec : Logged {
+    private val baseSpec = BaseSpec()
+
+    /**
+     * Directory creation.
+     *
+     * @param path String
+     */
     open fun mkdir(path: String) {
-        val uri: URI = this.newPath(path)
+        val filesystem = Filesystem.that(path).new()
 
         try {
-            FileUtils.forceMkdir(File(uri.path))
+            FileUtils.forceMkdir(filesystem.asFile)
         } catch (e: Exception) {
             Assertions.fail<Any>(e.message, e)
         }
 
-        this.touch(uri.path + File.separator + ".black-radish")
+        this.touch(filesystem.uri.path + File.separator + ".black-radish")
     }
 
+    /**
+     * Create an empty file.
+     *
+     * @param path String
+     */
     open fun touch(path: String) {
-        val absolutePath = UriHelper.uri(path, true).path
-
         try {
-            FileUtils.touch(File(absolutePath))
+            FileUtils.touch(File(Filesystem.that(path).file().path))
         } catch (e: Exception) {
             Assertions.fail<Any>(e.message, e)
         }
     }
 
+    /**
+     * Creation of a file with content.
+     *
+     * @param path String
+     * @param content DocString
+     */
     open fun create(path: String, content: DocString) {
-        this.create(path, content.content)
+        val absolutePath = Filesystem.that(path).file().path
+
+        try {
+            FileUtils.write(
+                File(absolutePath),
+                content.content,
+                Charset.defaultCharset(),
+                false,
+            )
+        } catch (e: Exception) {
+            Assertions.fail<Any>(e.message, e)
+        } finally {
+            Allure.addAttachment(FilenameUtils.getName(absolutePath), content.content)
+        }
     }
 
+    /**
+     * Deleting a file or directory.
+     *
+     * @param path String
+     * @param type FileType
+     */
     open fun delete(path: String, type: FileType) {
         try {
             when (type) {
                 FileType.DIR -> {
-                    val file = File(UriHelper.path(path).path)
+                    val file = Filesystem.that(path).directory().asFile
                     Assertions.assertThat(file).isDirectory
 
                     FileUtils.deleteDirectory(file)
                 }
 
                 FileType.FILE -> {
-                    val file = File(UriHelper.uri(path).path)
+                    val file = Filesystem.that(path).absolute().asFile
                     Assertions.assertThat(file).isFile
 
                     FileUtils.delete(file)
@@ -75,15 +115,15 @@ abstract class FilesystemSpec : Logged, DatabaseSpec() {
         }
     }
 
-    open fun exists(path: String, not: Boolean): URI? {
-        var uri: URI? = null
-
+    /**
+     * Checking if a file or directory exists.
+     *
+     * @param path String
+     * @param not Boolean
+     */
+    open fun exists(path: String, not: Boolean) {
         try {
-            uri = try {
-                UriHelper.uri(path)
-            } catch (_: AssertionError) {
-                UriHelper.current(path)
-            }
+            Filesystem.that(path).safe()
 
             if (not) {
                 Assertions.fail<Any>("$path exist")
@@ -95,25 +135,30 @@ abstract class FilesystemSpec : Logged, DatabaseSpec() {
         } catch (e: Exception) {
             Assertions.fail<Any>(e.message, e)
         }
-
-        return uri
     }
 
-    open fun copy(source: String, target: String, type: FileType) {
+    /**
+     * Copying a file or directory.
+     *
+     * @param sourcePath String
+     * @param targetPath String
+     * @param type FileType
+     */
+    open fun copy(sourcePath: String, targetPath: String, type: FileType) {
         try {
-            val sourceFile = File(this.exists(source, false)!!.path)
+            val sourceFile = Filesystem.that(sourcePath).safe().asFile
 
             when (type) {
                 FileType.DIR -> {
                     Assertions.assertThat(sourceFile).isDirectory
 
-                    FileUtils.copyDirectory(sourceFile, File(this.newPath(target).path))
+                    FileUtils.copyDirectory(sourceFile, Filesystem.that(targetPath).new().asFile)
                 }
 
                 FileType.FILE -> {
                     Assertions.assertThat(sourceFile).isFile
 
-                    FileUtils.copyFile(sourceFile, File(UriHelper.uri(target, true).path))
+                    FileUtils.copyFile(sourceFile, Filesystem.that(targetPath).file().asFile)
                 }
             }
         } catch (e: Exception) {
@@ -121,20 +166,28 @@ abstract class FilesystemSpec : Logged, DatabaseSpec() {
         }
     }
 
-    open fun move(source: String, target: String, type: FileType) {
+    /**
+     * Moving a file or directory.
+     *
+     * @param sourcePath String
+     * @param targetPath String
+     * @param type FileType
+     */
+    open fun move(sourcePath: String, targetPath: String, type: FileType) {
+        val sourceFile = Filesystem.that(sourcePath).safe().asFile
+
         try {
-            val sourceFile = File(this.exists(source, false)!!.path)
             when (type) {
                 FileType.DIR -> {
                     Assertions.assertThat(sourceFile).isDirectory
 
-                    FileUtils.moveDirectory(sourceFile, File(this.newPath(target).path))
+                    FileUtils.moveDirectory(sourceFile, Filesystem.that(targetPath).new().asFile)
                 }
 
                 FileType.FILE -> {
                     Assertions.assertThat(sourceFile).isFile
 
-                    FileUtils.moveFile(sourceFile, File(UriHelper.uri(target, true).path))
+                    FileUtils.moveFile(sourceFile, Filesystem.that(targetPath).file().asFile)
                 }
             }
         } catch (e: Exception) {
@@ -142,11 +195,18 @@ abstract class FilesystemSpec : Logged, DatabaseSpec() {
         }
     }
 
-    open fun moveTo(source: String, target: String, type: FileType) {
-        try {
-            val sourceFile = File(this.exists(source, false)!!.path)
-            val targetFile = File(this.newPath(target).path)
+    /**
+     * Move a file or directory to a directory.
+     *
+     * @param sourcePath String
+     * @param targetPath String
+     * @param type FileType
+     */
+    open fun moveTo(sourcePath: String, targetPath: String, type: FileType) {
+        val sourceFile = Filesystem.that(sourcePath).safe().asFile
+        val targetFile = Filesystem.that(targetPath).new().asFile
 
+        try {
             Assertions.assertThat(targetFile).isDirectory
 
             when (type) {
@@ -165,8 +225,14 @@ abstract class FilesystemSpec : Logged, DatabaseSpec() {
         }
     }
 
+    /**
+     * Getting a directory tree.
+     *
+     * @param path String
+     * @param recursively Boolean
+     */
     open fun tree(path: String, recursively: Boolean) {
-        val uri: URI = this.exists(path, false)!!
+        val uri: URI = Filesystem.that(path).safe().uri
         var collection: Collection<File>? = null
 
         try {
@@ -183,87 +249,90 @@ abstract class FilesystemSpec : Logged, DatabaseSpec() {
             Assertions.fail<Any>(e.message, e)
         }
 
-        val files: MutableList<String> = mutableListOf()
-        collection!!.filter { it.toString() != uri.path }.forEach {
-            files.add(it.toString().substringAfter(uri.path).trimStart(File.separatorChar))
+        val files: List<String> = collection!!.filter { it.toString() != uri.path }.toList().map {
+            it.toString().substringAfter(uri.path).trimStart(File.separatorChar)
         }
 
-        ThreadFilesProperty.set(files.toList())
+        val json = AnyObject.that(files.toList()).asJsonString
+        ConvertedResultStorage.set(ConvertedResult(json, DirectoryTreeConverter(files.toList())))
     }
 
-    open fun directoryIsEmpty() {
-        Assertions.assertThat(ThreadFilesProperty.get())
-            .`as`("Directory is not empty")
-            .isEmpty()
-    }
+    /**
+     * Checking a directory for the contents of a file or directory.
+     *
+     * @param dataTable DataTable
+     * @param isNot Boolean
+     */
+    open fun directoryContains(dataTable: DataTable, isNot: Boolean) {
+        val converter = ConvertedResultStorage.converter()
 
-    open fun directoryContains(dataTable: DataTable, not: Boolean) {
+        Assertions.assertThat(converter)
+            .`as`("The last result is not the result of getting the directory tree.")
+            .isInstanceOf(DirectoryTreeConverter::class.java)
+
         Assertions.assertThat(dataTable.columns(0).asList())
             .`as`("Content cannot be empty")
             .isNotEmpty
 
-        if (not) {
+        val tree = (converter as DirectoryTreeConverter).tree
+
+        if (isNot) {
             val list: List<String> = dataTable.columns(0).asList()
-            Assertions.assertThat(ThreadFilesProperty.get()).doesNotContain(*list.toTypedArray())
+            Assertions.assertThat(tree).doesNotContain(*list.toTypedArray())
         } else {
-            Assertions.assertThat(ThreadFilesProperty.get()).containsAll(dataTable.columns(0).asList())
+            Assertions.assertThat(tree).containsAll(dataTable.columns(0).asList())
         }
     }
 
-    open fun read(path: String, parser: Parser? = null) {
-        val absolutePath = this.exists(path, false)!!.path
+    /**
+     * Opening a file.
+     *
+     * @param path String
+     * @param converter Converter?
+     */
+    open fun `open`(path: String, converter: Converter? = null) {
+        val absolutePath = Filesystem.that(path).safe().path
         var content = ""
 
         try {
             val file = File(absolutePath)
             Assertions.assertThat(file).isFile
 
-            content = this.read(file)
+            content = FileUtils.readFileToString(file, Charset.defaultCharset().displayName())
+                .replace("\r\n", System.lineSeparator())
         } catch (e: Exception) {
             Assertions.fail<Any>(e.message, e)
         }
 
-        Assertions.assertThat(content).`as`("Empty content").isNotEmpty
-
-        val result = if (parser !== null) {
-            Result(content, parser)
+        val convertedResult = if (converter !== null) {
+            ConvertedResult(content, converter)
         } else {
-            Result(content)
+            ConvertedResult(content)
         }
 
-        this.after(result, absolutePath)
-    }
+        ConvertedResultStorage.set(convertedResult)
 
-    open fun parse(path: String, templatePath: String) {
-        try {
-            this.read(path, TemplateParser(this.exists(templatePath, false)!!))
-        } catch (e: Exception) {
-            Assertions.fail<Any>(e.message, e)
+        Allure.addAttachment(FilenameUtils.getName(absolutePath), content)
+
+        if (convertedResult.json !== null) {
+            Allure.addAttachment(FilenameUtils.getName(absolutePath) + ".json", convertedResult.json.toString())
         }
     }
 
-    open fun contentIs(content: DocString, not: Boolean) {
-        val replaced = content.content.replace("\r\n", System.lineSeparator())
-
-        if (not) {
-            Assertions.assertThat(
-                ThreadFileContentProperty.raw().trimEnd('\n', '\r'),
-            ).isNotEqualTo(replaced)
-        } else {
-            Assertions.assertThat(
-                ThreadFileContentProperty.raw().trimEnd('\n', '\r'),
-            ).isEqualTo(replaced)
-        }
-    }
-
-    open fun contentMatch(dataTable: DataTable, toComparisonOperation: Map<String, ComparisonOperation>) {
-        val lines = ThreadFileContentProperty.raw().split(System.lineSeparator())
+    /**
+     * Checking the contents of a file for consistency line by line.
+     *
+     * @param dataTable DataTable
+     * @param toComparisonOperation Map<String, ComparisonOperation>
+     */
+    open fun contentLineByLineMatch(dataTable: DataTable, toComparisonOperation: Map<String, ComparisonOperation>) {
+        val lines = ConvertedResultStorage.asRaw().split(System.lineSeparator())
         dataTable.asLists().forEach { row: List<String> ->
             Assertions.assertThat(row)
                 .`as`("Should be 3 columns.")
                 .hasSize(3)
 
-            NumberAssert.assertThat(row[0]).isNumber()
+            NumberAssert.assertThat(row[0]).isNumber
 
             val line = NumberUtils.createNumber(row[0]).toInt()
 
@@ -273,98 +342,38 @@ abstract class FilesystemSpec : Logged, DatabaseSpec() {
 
             Assertions.assertThat(toComparisonOperation).containsKey(row[1])
 
-            this.comparison(lines[line - 1], toComparisonOperation[row[1]]!!, row[2])
+            baseSpec.comparison(lines[line - 1], toComparisonOperation[row[1]]!!, row[2])
         }
     }
 
-    open fun linesCount(min: Boolean, count: Int) {
-        val assert = Assertions.assertThat(ThreadFileContentProperty.raw().split(System.lineSeparator()).size)
-        if (min) {
-            assert.isGreaterThanOrEqualTo(count)
+    /**
+     * Checking for the number of lines in a file.
+     *
+     * @param atLeast Boolean
+     * @param size Int
+     */
+    open fun linesCount(atLeast: Boolean, size: Int) {
+        val assert = Assertions.assertThat(ConvertedResultStorage.asRaw().split(System.lineSeparator()).size)
+        if (atLeast) {
+            assert.isGreaterThanOrEqualTo(size)
         } else {
-            assert.isEqualTo(count)
+            assert.isEqualTo(size)
         }
     }
 
-    open fun contentEquals(first: String, second: String) {
-        try {
-            val fileFirst = File(this.exists(first, false)!!.path)
-            Assertions.assertThat(fileFirst).isFile
+    /**
+     * Checking if the contents of two files match.
+     *
+     * @param firstFilePath String
+     * @param secondFilePath String
+     */
+    open fun contentEquals(firstFilePath: String, secondFilePath: String) {
+        val fileFirst = Filesystem.that(firstFilePath).safe().asFile
+        Assertions.assertThat(fileFirst).isFile
 
-            val fileSecond = File(this.exists(second, false)!!.path)
-            Assertions.assertThat(fileSecond).isFile
+        val fileSecond = Filesystem.that(secondFilePath).safe().asFile
+        Assertions.assertThat(fileSecond).isFile
 
-            FileAssert.assertThat(fileFirst).isContentEquals(fileSecond)
-        } catch (e: Exception) {
-            Assertions.fail<Any>(e.message, e)
-        }
-    }
-
-    protected open fun create(path: String, content: String) {
-        val absolutePath = UriHelper.uri(path, true).path
-
-        try {
-            FileUtils.write(
-                File(absolutePath),
-                content,
-                Charset.defaultCharset(),
-                false,
-            )
-        } catch (e: Exception) {
-            Assertions.fail<Any>(e.message, e)
-        }
-
-        this.after(content, absolutePath)
-    }
-
-    private fun read(file: File): String {
-        val content = FileUtils.readFileToString(file, Charset.defaultCharset().displayName())
-            .replace("\r\n", System.lineSeparator())
-
-        Assertions.assertThat(content).`as`("File %s is empty", file.path).isNotNull
-
-        return content
-    }
-
-    private fun newPath(path: String): URI {
-        var checkPath = path
-        var uri: URI? = null
-
-        while (checkPath.isNotEmpty()) {
-            try {
-                uri = UriHelper.path(checkPath)
-                break
-            } catch (_: AssertionError) {
-                checkPath = FilenameUtils.getFullPath(checkPath.trimEnd(File.separatorChar))
-            }
-        }
-
-        if (uri === null || uri.path == File.separator) {
-            uri = UriHelper.current()
-        }
-
-        val uriPath = uri.path.trimEnd(File.separatorChar) + File.separator + path.replaceFirst(checkPath, "")
-            .trimStart(File.separatorChar)
-
-        return UriHelper.create(uriPath.trimEnd(File.separatorChar))
-    }
-
-    protected fun after(content: String, absolutePath: String) {
-        Allure.addAttachment(FilenameUtils.getName(absolutePath), content)
-    }
-
-    protected fun after(result: Result, absolutePath: String) {
-        ThreadFileContentProperty.set(result)
-        Allure.addAttachment(FilenameUtils.getName(absolutePath), result.content)
-
-        if (result.json !== null) {
-            ThreadContentProperty.set(result)
-            Allure.addAttachment(FilenameUtils.getName(absolutePath) + ".json", result.json.toString())
-        }
-    }
-
-    protected fun after(file: File) {
-        Assertions.assertThat(file).exists()
-        Allure.addAttachment(FilenameUtils.getName(file.path), FileInputStream(file))
+        FileAssert.assertThat(fileFirst).isContentEquals(fileSecond)
     }
 }

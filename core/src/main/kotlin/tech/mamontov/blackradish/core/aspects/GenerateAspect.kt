@@ -19,34 +19,60 @@ import org.aspectj.lang.annotation.Aspect
 import org.aspectj.lang.annotation.Before
 import org.aspectj.lang.annotation.Pointcut
 import org.assertj.core.api.Assertions
+import tech.mamontov.blackradish.core.generators.IncludeGenerator
+import tech.mamontov.blackradish.core.generators.OperationGenerator
 import tech.mamontov.blackradish.core.interfaces.Logged
-import tech.mamontov.blackradish.core.utils.generator.step.IncludeGenerator
-import tech.mamontov.blackradish.core.utils.generator.step.OperationGenerator
-import tech.mamontov.blackradish.core.utils.reflecation.Reflecation
+import tech.mamontov.blackradish.core.reflecation.Reflecation
 import java.net.URI
 import java.time.Instant
 import java.util.function.Supplier
 import io.cucumber.messages.types.Pickle as TypesPickle
 
+/**
+ * AspectJ aspect to generate steps
+ *
+ * @see [AspectJ](https://www.eclipse.org/aspectj/)
+ *
+ * @author Dmitry Mamontov
+ *
+ * @property includeGenerator IncludeGenerator
+ * @property operationGenerator OperationGenerator
+ */
 @Aspect
-@Suppress("UNCHECKED_CAST", "UNUSED_PARAMETER")
-open class GenerateAspect : Logged {
+@Suppress(
+    "UNCHECKED_CAST",
+    "UNUSED_PARAMETER",
+    "UNUSED",
+    "KDocUnresolvedReference",
+)
+class GenerateAspect : Logged {
     private val includeGenerator = IncludeGenerator()
     private val operationGenerator = OperationGenerator()
 
+    /**
+     * Pointcut for **[io.cucumber.core.runner.Runner.createTestStepsForPickleSteps]**
+     *
+     * @param pickle io.cucumber.core.gherkin.Pickle
+     */
     @Pointcut("execution (* io.cucumber.core.runner.Runner.createTestStepsForPickleSteps(..)) && args(pickle)")
-    protected open fun create(pickle: Any) {
+    private fun createTestStepsForPickleSteps(pickle: Any) {
     }
 
-    @Before(value = "create(pickle)")
-    fun create(jp: JoinPoint, pickle: Any) {
+    /**
+     * Action before **[io.cucumber.core.runner.Runner.createTestStepsForPickleSteps]**
+     *
+     * @param jp JoinPoint
+     * @param pickle io.cucumber.core.gherkin.Pickle
+     */
+    @Before(value = "createTestStepsForPickleSteps(pickle)")
+    fun createTestStepsForPickleSteps(jp: JoinPoint, pickle: Any) {
         val runner: Any = jp.getThis()
 
-        if (!Reflecation.match(pickle, "io.cucumber.core.gherkin.messages.GherkinMessagesPickle")) {
+        if (!Reflecation.instanceOf(pickle, "io.cucumber.core.gherkin.messages.GherkinMessagesPickle")) {
             return
         }
 
-        val matcher = Reflecation.method(
+        val pickleStepDefinitionMatchMethod = Reflecation.method(
             runner,
             "matchStepToStepDefinition",
             false,
@@ -54,92 +80,149 @@ open class GenerateAspect : Logged {
             Step::class.java,
         )
 
-        this.includeGenerator.matcher = matcher
-        this.operationGenerator.matcher = matcher
+        this.includeGenerator.pickleStepDefinitionMatchMethod = pickleStepDefinitionMatchMethod
+        this.operationGenerator.pickleStepDefinitionMatchMethod = pickleStepDefinitionMatchMethod
 
-        this.includeGenerator.fill(
+        this.includeGenerator.fillStepsMap(
             pickle,
-            Reflecation.get(pickle, "steps") as List<Step>,
-            (Reflecation.get(pickle, "pickle") as TypesPickle).name,
+            Reflecation.getValue(pickle, "steps") as List<Step>,
+            (Reflecation.getValue(pickle, "pickle") as TypesPickle).name,
         )
     }
 
+    /**
+     * Pointcut for **[io.cucumber.core.runner.PickleStepDefinitionMatch.runStep]**
+     *
+     * @param state TestCaseState
+     */
     @Pointcut("execution (* io.cucumber.core.runner.PickleStepDefinitionMatch.runStep(..)) && args(state)")
-    protected open fun run(state: TestCaseState) {
+    private fun runStep(state: TestCaseState) {
     }
 
-    @Around(value = "run(state)")
-    fun run(jp: ProceedingJoinPoint, state: TestCaseState) {
-        if (!Reflecation.match(jp.getThis(), "io.cucumber.core.runner.PickleStepDefinitionMatch")) {
+    /**
+     * Action around **[io.cucumber.core.runner.PickleStepDefinitionMatch.runStep]**
+     *
+     * @param jp ProceedingJoinPoint
+     * @param state TestCaseState
+     */
+    @Around(value = "runStep(state)")
+    fun runStep(jp: ProceedingJoinPoint, state: TestCaseState) {
+        if (!Reflecation.instanceOf(jp.getThis(), "io.cucumber.core.runner.PickleStepDefinitionMatch")) {
             return
         }
 
-        val step = Reflecation.get(jp.getThis(), "step") as Step
+        val step = Reflecation.getValue(jp.getThis(), "step") as Step
 
-        val errors = this.errors()
-        if (errors.containsKey(step.id)) {
-            Assertions.fail<Any>(errors[step.id])
+        val stepErrors = this.getStepErrors()
+        if (stepErrors.containsKey(step.id)) {
+            Assertions.fail<Any>(stepErrors[step.id])
         }
 
-        this.operationGenerator.proceed(jp.getThis(), step)
+        this.operationGenerator.validateStep(jp.getThis(), step)
 
-        if (!this.skipped().contains(step.id)) {
+        if (!this.getSkippedSteps().contains(step.id)) {
             jp.proceed()
         }
     }
 
-    @Pointcut("execution (io.cucumber.core.runtime.FeaturePathFeatureSupplier.new(..)) && args(classLoader, featureOptions, parser)")
-    protected open fun supplier(
+    /**
+     * Pointcut for create **[io.cucumber.core.runtime.FeaturePathFeatureSupplier]**
+     *
+     * @param classLoader Supplier<ClassLoader>
+     * @param featureOptions Options
+     * @param parser FeatureParser
+     */
+    @Pointcut(
+        "execution (io.cucumber.core.runtime.FeaturePathFeatureSupplier.new(..)) && args(classLoader, featureOptions, parser)",
+    )
+    private fun newFeaturePathFeatureSupplier(
         classLoader: Supplier<ClassLoader>,
         featureOptions: Options,
         parser: FeatureParser,
     ) {
     }
 
-    @After(value = "supplier(classLoader, featureOptions, parser)")
-    fun supplier(
+    /**
+     * Action after create **[io.cucumber.core.runtime.FeaturePathFeatureSupplier]**
+     *
+     * @param jp JoinPoint
+     * @param classLoader Supplier<ClassLoader>
+     * @param featureOptions Options
+     * @param parser FeatureParser
+     */
+    @After(value = "newFeaturePathFeatureSupplier(classLoader, featureOptions, parser)")
+    fun newFeaturePathFeatureSupplier(
         jp: JoinPoint,
         classLoader: Supplier<ClassLoader>,
         featureOptions: Options,
         parser: FeatureParser,
     ) {
-        includeGenerator.scanner = Reflecation.get(jp.getThis(), "featureScanner") as ResourceScanner<Feature>
+        includeGenerator.featureScanner =
+            Reflecation.getValue(jp.getThis(), "featureScanner") as ResourceScanner<Feature>
     }
 
+    /**
+     * Pointcut for **[io.cucumber.core.gherkin.messages.GherkinMessagesPickle.getSteps]**
+     */
     @Pointcut("execution (* io.cucumber.core.gherkin.messages.GherkinMessagesPickle.getSteps(..))")
-    protected open fun steps() {
+    private fun getSteps() {
     }
 
-    @Around(value = "steps()")
-    fun steps(jp: ProceedingJoinPoint): List<Step> {
-        var steps = this.includeGenerator.generate(
+    /**
+     * Action around **[io.cucumber.core.gherkin.messages.GherkinMessagesPickle.getSteps]**
+     *
+     * @param jp ProceedingJoinPoint
+     * @return List<Step>
+     */
+    @Around(value = "getSteps()")
+    fun getSteps(jp: ProceedingJoinPoint): List<Step> {
+        val steps = this.includeGenerator.generate(
             jp.getThis(),
-            Reflecation.get(jp.getThis(), "steps") as MutableList<Step>,
+            Reflecation.getValue(jp.getThis(), "steps") as MutableList<Step>,
         )
 
-        this.operationGenerator.errors = this.errors().toMutableMap()
-        this.operationGenerator.skipped = this.skipped().toMutableList()
+        this.operationGenerator.stepErrors = this.getStepErrors().toMutableMap()
+        this.operationGenerator.skippedSteps = this.getSkippedSteps().toMutableList()
 
-        return this.operationGenerator.generate(steps, jp.getThis()).toList()
+        return this.operationGenerator.generateSteps(steps, jp.getThis()).toList()
     }
 
+    /**
+     * Pointcut for **[io.cucumber.core.runner.PickleStepTestStep.getUri]**
+     */
     @Pointcut("execution (* io.cucumber.core.runner.PickleStepTestStep.getUri(..))")
-    protected open fun uri() {
+    private fun getUri() {
     }
 
-    @Around(value = "uri()")
-    fun uri(jp: ProceedingJoinPoint): URI {
-        val step = Reflecation.get(jp.getThis(), "step") as Step
+    /**
+     * Action around **[io.cucumber.core.runner.PickleStepTestStep.getUri]**
+     *
+     * @param jp ProceedingJoinPoint
+     * @return URI
+     */
+    @Around(value = "getUri()")
+    fun getUri(jp: ProceedingJoinPoint): URI {
+        val step = Reflecation.getValue(jp.getThis(), "step") as Step
 
-        if (this.includeGenerator.uris.containsKey(step.id)) {
-            return this.includeGenerator.uris[step.id]!!
+        if (this.includeGenerator.stepsUri.containsKey(step.id)) {
+            return this.includeGenerator.stepsUri[step.id]!!
         }
 
-        return Reflecation.get(jp.getThis(), "uri") as URI
+        return Reflecation.getValue(jp.getThis(), "uri") as URI
     }
 
-    @Pointcut("execution (io.cucumber.plugin.event.TestStepFinished.new(..)) && args(timeInstant, testCase, testStep, testResult)")
-    protected open fun result(
+    /**
+     * Pointcut for create **[io.cucumber.plugin.event.TestStepFinished]**
+     *
+     * @param timeInstant Instant
+     * @param testCase TestCase
+     * @param testStep TestStep
+     * @param testResult ConvertedResult
+     */
+    @Pointcut(
+        "execution (io.cucumber.plugin.event.TestStepFinished.new(..)) && args(timeInstant, testCase, testStep, testResult)",
+    )
+    private fun newTestStepFinished(
         timeInstant: Instant,
         testCase: TestCase,
         testStep: TestStep,
@@ -147,32 +230,51 @@ open class GenerateAspect : Logged {
     ) {
     }
 
-    @After(value = "result(timeInstant, testCase, testStep, testResult)")
-    open fun result(
+    /**
+     * Action after create **[io.cucumber.plugin.event.TestStepFinished]**
+     *
+     * @param jp JoinPoint
+     * @param timeInstant Instant
+     * @param testCase TestCase
+     * @param testStep TestStep
+     * @param testResult ConvertedResult
+     */
+    @After(value = "newTestStepFinished(timeInstant, testCase, testStep, testResult)")
+    fun newTestStepFinished(
         jp: JoinPoint,
         timeInstant: Instant,
         testCase: TestCase,
         testStep: TestStep,
         testResult: Result,
     ) {
-        val results = Reflecation.field(jp.getThis(), "result")
-        val result = Reflecation.get(jp.getThis(), results) as Result
+        val resultsMap = Reflecation.field(jp.getThis(), "result")
+        val result = Reflecation.getValue(jp.getThis(), resultsMap) as Result
         try {
-            val id: String = (Reflecation.get(testStep, "step") as Step).id
+            val id: String = (Reflecation.getValue(testStep, "step") as Step).id
 
-            if (this.skipped().contains(id)) {
-                results[jp.getThis()] = Result(Status.SKIPPED, result.duration, result.error)
+            if (this.getSkippedSteps().contains(id)) {
+                resultsMap[jp.getThis()] = Result(Status.SKIPPED, result.duration, result.error)
             }
         } catch (_: NoSuchFieldException) {
-            results[jp.getThis()] = Result(Status.SKIPPED, result.duration, result.error)
+            resultsMap[jp.getThis()] = Result(Status.SKIPPED, result.duration, result.error)
         }
     }
 
-    private fun skipped(): List<String> {
-        return this.includeGenerator.skipped + this.operationGenerator.skipped
+    /**
+     * List of skipped steps from all generators
+     *
+     * @return List<String>
+     */
+    private fun getSkippedSteps(): List<String> {
+        return this.includeGenerator.skippedSteps + this.operationGenerator.skippedSteps
     }
 
-    private fun errors(): Map<String, String> {
-        return this.includeGenerator.errors + this.operationGenerator.errors
+    /**
+     * List of steps with errors, from all generators
+     *
+     * @return Map<String, String>
+     */
+    private fun getStepErrors(): Map<String, String> {
+        return this.includeGenerator.stepErrors + this.operationGenerator.stepErrors
     }
 }

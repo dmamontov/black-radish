@@ -1,0 +1,36 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "array",
+  "items": [
+    {
+      "type": "object",
+      "properties": {
+        "localAS": {
+          "type": "integer"
+        },
+        "remoteAS": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "localAS",
+        "remoteAS"
+      ]
+    },
+    {
+      "type": "object",
+      "properties": {
+        "localAS": {
+          "type": "integer"
+        },
+        "remoteAS": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "localAS",
+        "remoteAS"
+      ]
+    }
+  ]
+}

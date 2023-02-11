@@ -7,17 +7,27 @@ import org.testng.annotations.BeforeClass
 import org.testng.annotations.DataProvider
 import tech.mamontov.blackradish.core.cucumber.OptionsCucumber
 import tech.mamontov.blackradish.core.interfaces.Logged
-import tech.mamontov.blackradish.core.properties.ThreadProperty
-import tech.mamontov.blackradish.core.utils.reflecation.Reflecation
+import tech.mamontov.blackradish.core.reflecation.Reflecation
+import tech.mamontov.blackradish.core.storages.PropertyStorage
 import java.lang.reflect.Method
 
+/**
+ * Base TestNG test
+ *
+ * @author Dmitry Mamontov
+ */
 @Suppress("UNCHECKED_CAST")
 abstract class BaseTest : Logged, AbstractTestNGCucumberTests() {
+    /**
+     * Setup test
+     *
+     * @param context ITestContext
+     */
     @BeforeClass(alwaysRun = true)
     override fun setUpClass(context: ITestContext) {
         try {
             val annotationData = Reflecation.method(this.javaClass, "annotationData").call()
-            val map = Reflecation.get(
+            val map = Reflecation.getValue(
                 annotationData,
                 "annotations",
             ) as MutableMap<Class<out Annotation>, Annotation>
@@ -40,8 +50,11 @@ abstract class BaseTest : Logged, AbstractTestNGCucumberTests() {
         super.setUpClass(context)
     }
 
+    /**
+     * Set class name property
+     */
     @BeforeClass(alwaysRun = true)
     fun beforeClass() {
-        ThreadProperty.set("class", this::class.java.canonicalName)
+        PropertyStorage.set("class", this::class.java.canonicalName)
     }
 }

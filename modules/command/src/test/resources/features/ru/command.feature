@@ -1,81 +1,113 @@
 # language: ru
 
-@example
-Функция: Консольные команды
+@examples @module:command @module:core
+Функция: Command
 
-  Данная функция представляет собой примеры выполнения команд локально
+  Данный модуль предоставляет возможность работы с локальными командами.
 
-  Правило: Запуск команд
+  Правило: Запуск
 
     Сценарий: Пример запуска команды
       Когда я запускаю команду 'echo "example"' локально
 
     Сценарий: Пример запуска команды с установленным максимальным временем выполнения
-      #Note: после выполнения команды максимальное время выполнения сбрасывается по умолчанию(module.command.timeout). можно сконфигурировать в файле setting.properties
+      #Note: После выполнения команды максимальное время выполнения сбрасывается по умолчанию(module.command.timeout).
       Когда я устанавливаю максимальное время выполнения команды '10' секунд
       Тогда я запускаю команду 'echo "example"' локально
 
-    Сценарий: Пример запуска команды каждую секунду в течении указанного времени до появления содержимого
-      Затем менее чем через '10' секунд вывод локальной команды 'sleep 1 && printf "first\nsecond" && sleep 10 && echo "four"' содержит 'second'
+    Сценарий: Пример запуска команды до появления содержимого в течении указанного времени
+      #Warning: Если команда завершилась раньше указанного времени, она будет перезапущена.
+      Затем менее чем через '10' секунд вывод локальной команды 'sleep 1 && printf "hello\nworld" && sleep 10' содержит 'world'
 
-    @force
+  @force
+  Правило: Запуск в фоне
+    #Note: По окончанию выполнения сценария команда будет завершена автоматически.
+    #Note: При использовании тега ``@force``, по окончанию выполнения сценария команда будет завершена принудительно.
+
     Сценарий: Пример запуска команды в фоне
-      Когда я запускаю локальную команду 'sleep 1 && echo "first" && sleep 1 && echo "second"' в фоне
+      Когда я запускаю локальную команду 'sleep 1 && echo "hello" && sleep 1 && echo "world"' в фоне
+
+    Сценарий: Пример завершения команды запущенной в фоне
+      Когда я запускаю локальную команду 'sleep 1 && echo "hello" && sleep 1 && echo "world"' в фоне
       Тогда я завершаю команду запущенную в фоне
 
-    @force
     Сценарий: Пример запуска нескольких команд в фоне
-      Когда я запускаю локальную команду 'sleep 1 && echo "first" && sleep 2 && echo "second"' в фоне
-      И сохраняю идентификатор команды в переменную 'FIRST'
+      Когда я запускаю локальную команду 'sleep 1 && echo "hello" && sleep 2 && echo "world"' в фоне
+      Тогда сохраняю идентификатор команды в переменную 'FIRST'
 
-      Тогда я запускаю локальную команду 'sleep 1 && echo "three" && sleep 5 && echo "four"' в фоне
-      И сохраняю идентификатор команды в переменную 'SECOND'
+      Когда я запускаю локальную команду 'sleep 1 && echo "hello" && sleep 5 && echo "world"' в фоне
+      Тогда сохраняю идентификатор команды в переменную 'SECOND'
 
       Затем я завершаю команду запущенную в фоне с идентификатором '${FIRST}'
       Затем я завершаю команду запущенную в фоне с идентификатором '${SECOND}'
 
-  Правило: Результат выполнения команд
-
-    Сценарий: Пример сохранения результата выполнения команды в переменную
-      Когда я запускаю команду 'echo "first"' локально
-      Тогда сохраняю результат выполнения команды в переменную 'RESULT'
-      Тогда '${RESULT}' равно 'first'
+  Правило: Сравнение результата
+    #Note: Поддерживаются все операции сравнения
 
     Сценарий: Пример проверки кода выхода команды
       Когда я запускаю команду 'echo "first"' локально
       Тогда код выхода команды должен быть '0'
 
-    Сценарий: Пример проверки результата выполнения команды
-      Когда я запускаю команду 'printf "first\nsecond"' локально
-      Тогда результат выполнения команды соответствует:
+    Сценарий: Пример сравнения оригинала результата
+      Когда я запускаю команду 'echo "200"' локально
+      Тогда результат равен '200'
+      И результат не равен '100'
+      И результат соответствует '^\d+'
+      И результат содержит '20'
+      И результат больше '100'
+      И результат меньше '300'
+
+    Сценарий: Пример сравнения оригинала результата, вариант 2
+      Когда я запускаю команду 'echo "200"' локально
+      Тогда результат равен:
         """
-        first
-        second
+        200
+        """
+      И результат не равен:
+        """
+        100
+        """
+      И результат соответствует:
+        """
+        ^\d+
+        """
+      И результат содержит:
+        """
+        20
+        """
+      И результат больше:
+        """
+        100
+        """
+      И результат меньше:
+        """
+        300
         """
 
-    @force
+  @force
+  Правило: Сравнение результата команд запущенных в фоне
+    #Note: Поддерживаются все операции сравнения
+
     Сценарий: Пример проверки результата выполнения команды в фоне без прерывания процесса
       Когда я запускаю локальную команду 'sleep 1 && echo "first"' в фоне
       Тогда я жду '1' секунды
       Затем я завершаю команду запущенную в фоне
       Тогда код выхода команды должен быть '0'
-      И результат выполнения команды соответствует:
+      И результат равен:
         """
         first
         """
 
-    @force
     Сценарий: Пример проверки результата выполнения команды в фоне с прерыванием процесса через 1 секунду
       Когда я запускаю локальную команду 'sleep 1 && echo "first" && sleep 1 && echo "second"' в фоне
       Тогда я жду '1' секунды
       Затем я завершаю команду запущенную в фоне
       Тогда код выхода команды должен быть '143'
-      И результат выполнения команды соответствует:
+      И результат равен:
         """
         first
         """
 
-    @force
     Сценарий: Пример проверки результата нескольких команд в фоне
       Когда я запускаю локальную команду 'sleep 1 && echo "first" && sleep 2 && echo "second"' в фоне
       И сохраняю идентификатор команды в переменную 'FIRST'
@@ -87,7 +119,7 @@
 
       Затем я завершаю команду запущенную в фоне с идентификатором '${FIRST}'
       Тогда код выхода команды должен быть '0'
-      И результат выполнения команды соответствует:
+      И результат равен:
         """
         first
         second
@@ -95,73 +127,228 @@
 
       Затем я завершаю команду запущенную в фоне с идентификатором '${SECOND}'
       Тогда код выхода команды должен быть '143'
-      И результат выполнения команды соответствует:
+      И результат равен:
         """
         three
         four
         """
 
-  Правило: Парсинг результата
+  Правило: JsonConverter
 
-    Сценарий: Пример парсинга json
-      #Note: подробнее https://github.com/json-path/JsonPath
-      Когда я открываю файл 'artifacts/parsers/example.json'
-      Тогда я сохраняю результат в переменной 'JSON'
-      Затем я запускаю команду 'printf '${JSON}'' локально
-      Тогда я проверяю результат по схеме 'artifacts/schemas/json.json'
-      И результат содержит '3' записи
-      И сумма '$..remoteAS' в результате равна '196656.0'
-      И в результате:
-        | $.[0].localAS  | равно         | 65551                |
-        | $.[0].remoteAS | больше        | 65550                |
-        | $.[0].remoteIp | соответствует | ^\d+\.\d+\.\d+\.\d+$ |
-        | $.[1].status   | меньше        | 1                    |
-        | $.[2].status   | не равно      | 0                    |
-        | $.[2].routerId | содержит      | 192                  |
+    Сценарий: Пример проверки количество записей в json на равенство
+      #File:json: src/test/resources/artifacts/files/example.json
+      Когда я запускаю команду 'printf -- '${file:UTF-8:src/test/resources/artifacts/files/example.json}'' локально
+      Тогда результат содержит '2' записи
 
-    Сценарий: Пример парсинга xml
-      #Note: подробнее https://github.com/json-path/JsonPath
-      Когда я открываю файл 'artifacts/parsers/example.xml'
-      Тогда я сохраняю результат в переменной 'XML'
-      Затем я запускаю команду 'printf '${XML}'' локально
-      Тогда я проверяю результат по схеме 'artifacts/schemas/xml.xsd'
-      И сумма '$.root.element.*.remoteAS' в результате равна '196656.0'
-      И в результате:
-        | $.root.element.[0].localAS  | равно         | 65551                |
-        | $.root.element.[0].remoteAS | больше        | 65550                |
-        | $.root.element.[0].remoteIp | соответствует | ^\d+\.\d+\.\d+\.\d+$ |
-        | $.root.element.[1].status   | меньше        | 1                    |
-        | $.root.element.[2].status   | не равно      | 0                    |
-        | $.root.element.[2].routerId | содержит      | 192                  |
+    Сценарий: Пример проверки количество записей в json на минимальное количество
+      #File:json: src/test/resources/artifacts/files/example.json
+      Когда я запускаю команду 'printf -- '${file:UTF-8:src/test/resources/artifacts/files/example.json}'' локально
+      Тогда результат содержит не менее '2' записей
 
-    Сценарий: Пример парсинга yaml
-      #Note: подробнее https://github.com/json-path/JsonPath
-      Когда я открываю файл 'artifacts/parsers/example.yaml'
-      Тогда я сохраняю результат в переменной 'YAML'
-      Затем я запускаю команду 'printf '\"${YAML}"\'' локально
-      Тогда я проверяю результат по схеме 'artifacts/schemas/yaml.json'
-      И результат содержит '3' записи
-      И сумма '$..remoteAS' в результате равна '196656.0'
-      И в результате:
-        | $.[0].localAS  | равно         | 65551                |
-        | $.[0].remoteAS | больше        | 65550                |
-        | $.[0].remoteIp | соответствует | ^\d+\.\d+\.\d+\.\d+$ |
-        | $.[1].status   | меньше        | 1                    |
-        | $.[2].status   | не равно      | 0                    |
-        | $.[2].routerId | содержит      | 192                  |
+    Сценарий: Пример валидации json по json схеме
+      #File:json: src/test/resources/artifacts/files/example.json
+      #File:json: src/test/resources/artifacts/files/schema-json.json
+      Когда я запускаю команду 'printf -- '${file:UTF-8:src/test/resources/artifacts/files/example.json}'' локально
+      Тогда я проверяю содержимое по схеме 'artifacts/files/schema-json.json'
 
-    Сценарий: Пример парсинга результата по шаблону
-      #Note: подробнее https://github.com/sonalake/utah-parser, https://github.com/json-path/JsonPath
-      Когда я разбираю файл 'artifacts/parsers/example.txt' используя шаблон 'artifacts/templates/parser.xml'
-      Тогда я сохраняю результат в переменной 'TXT'
-      Затем я запускаю команду 'printf '${TXT}'' локально
-      И разбираю результат выполнения команды используя шаблон 'artifacts/templates/parser.xml'
-      Тогда результат содержит '3' записи
-      И сумма '$..localAS' в результате равна '196653.0'
-      И в результате:
-        | $.[0].localAS  | равно         | 65551                |
-        | $.[0].remoteAS | больше        | 65550                |
-        | $.[0].remoteIp | соответствует | ^\d+\.\d+\.\d+\.\d+$ |
-        | $.[1].status   | меньше        | 1                    |
-        | $.[2].status   | не равно      | 0                    |
-        | $.[2].routerId | содержит      | 192                  |
+    Сценарий: Пример суммирования значений в json по json path
+      #File:json: src/test/resources/artifacts/files/example.json
+      Когда я запускаю команду 'printf -- '${file:UTF-8:src/test/resources/artifacts/files/example.json}'' локально
+      Тогда сумма '$..remoteAS' в результате равна '131103.0'
+
+    Сценарий: Пример проверки результата преобразования json по json path
+      #Note: Поддерживаются все проверки аналогично переменным
+      #File:json: src/test/resources/artifacts/files/example.json
+      Когда я запускаю команду 'printf -- '${file:UTF-8:src/test/resources/artifacts/files/example.json}'' локально
+      Тогда в результате:
+        | $.[0].localAS  | равно         | 65551 |
+        | $.[0].remoteAS | больше        | 65550 |
+        | $.[1].localAS  | соответствует | ^\d+$ |
+        | $.[1].remoteAS | содержит      | 65    |
+
+    Сценарий: Пример сохранения оригинала json в переменную
+      #File:json: src/test/resources/artifacts/files/example.json
+      Когда я запускаю команду 'printf -- '${file:UTF-8:src/test/resources/artifacts/files/example.json}'' локально
+      Тогда я сохраняю оригинал в переменной 'ORIGINAL'
+      Затем '${ORIGINAL}' равно '${file:UTF-8:src/test/resources/artifacts/files/example.json}'
+
+    Сценарий: Пример сохранения результата преобразования json в переменную
+      #File:json: src/test/resources/artifacts/files/example.json
+      Когда я запускаю команду 'printf -- '${file:UTF-8:src/test/resources/artifacts/files/example.json}'' локально
+      Тогда я сохраняю результат в переменной 'RESULT'
+      Затем '${RESULT}' равно '${file:UTF-8:src/test/resources/artifacts/files/converted-json.json}'
+
+    Сценарий: Пример сохранения результата преобразования json по json path в переменную
+      #File:json: src/test/resources/artifacts/files/example.json
+      Когда я запускаю команду 'printf -- '${file:UTF-8:src/test/resources/artifacts/files/example.json}'' локально
+      Тогда я сохраняю результат '$.[0].localAS' в переменной 'LOCAL_AS'
+      Затем '${LOCAL_AS}' равно '65551'
+
+  Правило: YamlConverter
+
+    Сценарий: Пример проверки количество записей в yaml на равенство
+      #File:yaml: src/test/resources/artifacts/files/example.yaml
+      #File:json: src/test/resources/artifacts/files/converted-yaml.json
+      Когда я запускаю команду 'printf -- '${file:UTF-8:src/test/resources/artifacts/files/example.yaml}'' локально
+      Тогда результат содержит '2' записи
+
+    Сценарий: Пример проверки количество записей в yaml на минимальное количество
+      #File:yaml: src/test/resources/artifacts/files/example.yaml
+      #File:json: src/test/resources/artifacts/files/converted-yaml.json
+      Когда я запускаю команду 'printf -- '${file:UTF-8:src/test/resources/artifacts/files/example.yaml}'' локально
+      Тогда результат содержит не менее '2' записей
+
+    Сценарий: Пример валидации yaml по json схеме
+      #File:yaml: src/test/resources/artifacts/files/example.yaml
+      #File:json: src/test/resources/artifacts/files/converted-yaml.json
+      #File:json: src/test/resources/artifacts/files/schema-yaml.json
+      Когда я запускаю команду 'printf -- '${file:UTF-8:src/test/resources/artifacts/files/example.yaml}'' локально
+      Тогда я проверяю содержимое по схеме 'artifacts/files/schema-yaml.json'
+
+    Сценарий: Пример суммирования значений в yaml по json path
+      #File:yaml: src/test/resources/artifacts/files/example.yaml
+      #File:json: src/test/resources/artifacts/files/converted-yaml.json
+      Когда я запускаю команду 'printf -- '${file:UTF-8:src/test/resources/artifacts/files/example.yaml}'' локально
+      Тогда сумма '$..remoteAS' в результате равна '131103.0'
+
+    Сценарий: Пример проверки результата преобразования yaml по json path
+      #Note: Поддерживаются все проверки аналогично переменным
+      #File:yaml: src/test/resources/artifacts/files/example.yaml
+      #File:json: src/test/resources/artifacts/files/converted-yaml.json
+      Когда я запускаю команду 'printf -- '${file:UTF-8:src/test/resources/artifacts/files/example.yaml}'' локально
+      Тогда в результате:
+        | $.[0].localAS  | равно         | 65551 |
+        | $.[0].remoteAS | больше        | 65550 |
+        | $.[1].localAS  | соответствует | ^\d+$ |
+        | $.[1].remoteAS | содержит      | 65    |
+
+    Сценарий: Пример сохранения оригинала yaml в переменную
+      #File:yaml: src/test/resources/artifacts/files/example.yaml
+      Когда я запускаю команду 'printf -- '${file:UTF-8:src/test/resources/artifacts/files/example.yaml}'' локально
+      Тогда я сохраняю оригинал в переменной 'ORIGINAL'
+      Затем '${ORIGINAL}' равно '${file:UTF-8:src/test/resources/artifacts/files/example.yaml}'
+
+    Сценарий: Пример сохранения результата преобразования yaml в переменную
+      #File:yaml: src/test/resources/artifacts/files/example.yaml
+      #File:json: src/test/resources/artifacts/files/converted-yaml.json
+      Когда я запускаю команду 'printf -- '${file:UTF-8:src/test/resources/artifacts/files/example.yaml}'' локально
+      Тогда я сохраняю результат в переменной 'RESULT'
+      Затем '${RESULT}' равно '${file:UTF-8:src/test/resources/artifacts/files/converted-yaml.json}'
+
+    Сценарий: Пример сохранения результата преобразования yaml по json path в переменную
+      #File:yaml: src/test/resources/artifacts/files/example.yaml
+      #File:json: src/test/resources/artifacts/files/converted-yaml.json
+      Когда я запускаю команду 'printf -- '${file:UTF-8:src/test/resources/artifacts/files/example.yaml}'' локально
+      Тогда я сохраняю результат '$.[0].localAS' в переменной 'LOCAL_AS'
+      Затем '${LOCAL_AS}' равно '65551'
+
+  Правило: XmlConverter
+
+    Сценарий: Пример валидации xml по xsd схеме
+      #File:xml: src/test/resources/artifacts/files/example.xml
+      #File:json: src/test/resources/artifacts/files/converted-xml.json
+      #File:bin: src/test/resources/artifacts/files/schema-xml.xsd
+      Когда я запускаю команду 'printf -- '${file:UTF-8:src/test/resources/artifacts/files/example.xml}'' локально
+      Тогда я проверяю содержимое по схеме 'artifacts/files/schema-xml.xsd'
+
+    Сценарий: Пример суммирования значений в xml по json path
+      #File:xml: src/test/resources/artifacts/files/example.xml
+      #File:json: src/test/resources/artifacts/files/converted-xml.json
+      Когда я запускаю команду 'printf -- '${file:UTF-8:src/test/resources/artifacts/files/example.xml}'' локально
+      Тогда сумма '$.root.element.*.remoteAS' в результате равна '131103.0'
+
+    Сценарий: Пример проверки результата преобразования xml по json path
+      #Note: Поддерживаются все проверки аналогично переменным
+      #File:xml: src/test/resources/artifacts/files/example.xml
+      #File:json: src/test/resources/artifacts/files/converted-xml.json
+      Когда я запускаю команду 'printf -- '${file:UTF-8:src/test/resources/artifacts/files/example.xml}'' локально
+      Тогда в результате:
+        | $.root.element.[0].localAS  | равно         | 65551 |
+        | $.root.element.[0].remoteAS | больше        | 65550 |
+        | $.root.element.[1].localAS  | соответствует | ^\d+$ |
+        | $.root.element.[1].remoteAS | содержит      | 65    |
+
+    Сценарий: Пример сохранения оригинала xml в переменную
+      #File:xml: src/test/resources/artifacts/files/example.xml
+      Когда я запускаю команду 'printf -- '${file:UTF-8:src/test/resources/artifacts/files/example.xml}'' локально
+      Тогда я сохраняю оригинал в переменной 'ORIGINAL'
+      Затем '${ORIGINAL}' равно '${file:UTF-8:src/test/resources/artifacts/files/example.xml}'
+
+    Сценарий: Пример сохранения результата преобразования xml в переменную
+      #File:xml: src/test/resources/artifacts/files/example.xml
+      #File:json: src/test/resources/artifacts/files/converted-xml.json
+      Когда я запускаю команду 'printf -- '${file:UTF-8:src/test/resources/artifacts/files/example.xml}'' локально
+      Тогда я сохраняю результат в переменной 'RESULT'
+      Затем '${RESULT}' равно '${file:UTF-8:src/test/resources/artifacts/files/converted-xml.json}'
+
+    Сценарий: Пример сохранения результата преобразования xml по json path в переменную
+      #File:xml: src/test/resources/artifacts/files/example.xml
+      #File:json: src/test/resources/artifacts/files/converted-xml.json
+      Когда я запускаю команду 'printf -- '${file:UTF-8:src/test/resources/artifacts/files/example.xml}'' локально
+      Тогда я сохраняю результат '$.root.element.[0].localAS' в переменной 'LOCAL_AS'
+      Затем '${LOCAL_AS}' равно '65551'
+
+  Правило: TemplateConverter
+
+    Сценарий: Пример проверки количество записей преобразованных по шаблону на равенство
+      #File:bin: src/test/resources/artifacts/files/example.txt
+      #File:bin: src/test/resources/artifacts/files/template.xml
+      #File:bin: src/test/resources/artifacts/files/converted-txt.json
+      Когда я запускаю команду 'printf -- '${file:UTF-8:src/test/resources/artifacts/files/example.txt}'' локально
+      Тогда я преобразовываю результат по шаблону 'artifacts/files/template.xml'
+      Затем результат содержит '2' записи
+
+    Сценарий: Пример проверки количество записей преобразованных по шаблону на минимальное количество
+      #File:bin: src/test/resources/artifacts/files/example.txt
+      #File:bin: src/test/resources/artifacts/files/template.xml
+      #File:bin: src/test/resources/artifacts/files/converted-txt.json
+      Когда я запускаю команду 'printf -- '${file:UTF-8:src/test/resources/artifacts/files/example.txt}'' локально
+      Тогда я преобразовываю результат по шаблону 'artifacts/files/template.xml'
+      Затем результат содержит не менее '2' записей
+
+    Сценарий: Пример суммирования значений в преобразованных данных по шаблону и json path
+      #File:bin: src/test/resources/artifacts/files/example.txt
+      #File:bin: src/test/resources/artifacts/files/template.xml
+      #File:bin: src/test/resources/artifacts/files/converted-txt.json
+      Когда я запускаю команду 'printf -- '${file:UTF-8:src/test/resources/artifacts/files/example.txt}'' локально
+      Тогда я преобразовываю результат по шаблону 'artifacts/files/template.xml'
+      Затем сумма '$..remoteAS' в результате равна '131103.0'
+
+    Сценарий: Пример проверки результата преобразования данных по шаблону и json path
+      #Note: Поддерживаются все проверки аналогично переменным
+      #File:bin: src/test/resources/artifacts/files/example.txt
+      #File:bin: src/test/resources/artifacts/files/template.xml
+      #File:bin: src/test/resources/artifacts/files/converted-txt.json
+      Когда я запускаю команду 'printf -- '${file:UTF-8:src/test/resources/artifacts/files/example.txt}'' локально
+      Тогда я преобразовываю результат по шаблону 'artifacts/files/template.xml'
+      Затем в результате:
+        | $.[0].localAS  | равно         | 65551 |
+        | $.[0].remoteAS | больше        | 65550 |
+        | $.[1].localAS  | соответствует | ^\d+$ |
+        | $.[1].remoteAS | содержит      | 65    |
+
+    Сценарий: Пример сохранения оригинала преобразованных данных по шаблону в переменную
+      #File:bin: src/test/resources/artifacts/files/example.txt
+      #File:bin: src/test/resources/artifacts/files/template.xml
+      Когда я запускаю команду 'printf -- '${file:UTF-8:src/test/resources/artifacts/files/example.txt}'' локально
+      Тогда я преобразовываю результат по шаблону 'artifacts/files/template.xml'
+      Затем я сохраняю оригинал в переменной 'ORIGINAL'
+      И '${ORIGINAL}' равно '${file:UTF-8:src/test/resources/artifacts/files/example.txt}'
+
+    Сценарий: Пример сохранения результата преобразованных данных по шаблону в переменную
+      #File:bin: src/test/resources/artifacts/files/example.txt
+      #File:bin: src/test/resources/artifacts/files/template.xml
+      #File:bin: src/test/resources/artifacts/files/converted-txt.json
+      Когда я запускаю команду 'printf -- '${file:UTF-8:src/test/resources/artifacts/files/example.txt}'' локально
+      Тогда я преобразовываю результат по шаблону 'artifacts/files/template.xml'
+      Затем я сохраняю результат в переменной 'RESULT'
+      И '${RESULT}' равно '${file:UTF-8:src/test/resources/artifacts/files/converted-txt.json}'
+
+    Сценарий: Пример сохранения результата преобразованных данных по шаблону и json path в переменную
+      #File:bin: src/test/resources/artifacts/files/example.txt
+      #File:bin: src/test/resources/artifacts/files/template.xml
+      #File:bin: src/test/resources/artifacts/files/converted-txt.json
+      Когда я запускаю команду 'printf -- '${file:UTF-8:src/test/resources/artifacts/files/example.txt}'' локально
+      Тогда я преобразовываю результат по шаблону 'artifacts/files/template.xml'
+      Затем я сохраняю результат '$.[0].localAS' в переменной 'LOCAL_AS'
+      И '${LOCAL_AS}' равно '65551'

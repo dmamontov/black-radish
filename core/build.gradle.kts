@@ -61,4 +61,6 @@ dependencies {
 
     api("com.jayway.jsonpath:json-path:2.7.0")
     api("com.jayway.jsonpath:json-path-assert:2.7.0")
+
+    testImplementation("org.xerial:sqlite-jdbc:3.40.0.0")
 }

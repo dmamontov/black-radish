@@ -1,24 +1,43 @@
 package tech.mamontov.blackradish.ssh.specs
 
 import com.sshtools.client.SshClient
+import io.qameta.allure.Allure
+import org.apache.commons.io.FilenameUtils
+import org.apache.commons.io.output.ByteArrayOutputStream
 import org.assertj.core.api.Assertions
+import tech.mamontov.blackradish.command.commands.LocalCommand
 import tech.mamontov.blackradish.command.data.CommandResult
-import tech.mamontov.blackradish.command.properties.ThreadCommandResultProperty
-import tech.mamontov.blackradish.command.properties.ThreadTimeoutProperty
-import tech.mamontov.blackradish.command.specs.CommandSpec
-import tech.mamontov.blackradish.core.helpers.UriHelper
+import tech.mamontov.blackradish.command.storages.CommandStorage
+import tech.mamontov.blackradish.core.data.ConvertedResult
+import tech.mamontov.blackradish.core.helpers.Filesystem
 import tech.mamontov.blackradish.core.interfaces.Logged
-import tech.mamontov.blackradish.core.properties.ConfigurationProperty
+import tech.mamontov.blackradish.core.storages.ConfigurationStorage
+import tech.mamontov.blackradish.core.storages.ConvertedResultStorage
 import tech.mamontov.blackradish.ssh.commands.SshCommand
 import tech.mamontov.blackradish.ssh.enumerated.AuthType
 import tech.mamontov.blackradish.ssh.enumerated.SftpMethod
-import tech.mamontov.blackradish.ssh.properties.ThreadSshProperty
+import tech.mamontov.blackradish.ssh.storages.SshClientStorage
 import java.io.File
 import java.util.concurrent.TimeUnit
 
-abstract class SshSpec : Logged, CommandSpec() {
+/**
+ * Ssh spec
+ *
+ * @author Dmitry Mamontov
+ */
+open class SshSpec : Logged {
+    /**
+     * Opening an ssh connection.
+     *
+     * @param host String
+     * @param port Int
+     * @param user String
+     * @param auth AuthType
+     * @param token String
+     * @param passphrase String?
+     */
     fun connect(host: String, port: Int, user: String, auth: AuthType, token: String, passphrase: String?) {
-        if (ThreadSshProperty.get() !== null) {
+        if (SshClientStorage.get() !== null) {
             Assertions.fail<Any>("SSH connection already open")
         }
 
@@ -34,13 +53,13 @@ abstract class SshSpec : Logged, CommandSpec() {
         }
 
         val timeout = TimeUnit.SECONDS.toMillis(
-            ConfigurationProperty.get(ConfigurationProperty.MODULE_SSH_COMMAND_TIMEOUT, 60).toLong(),
+            ConfigurationStorage.get(ConfigurationStorage.MODULE_SSH_COMMAND_TIMEOUT, 60).toLong(),
         )
 
         try {
             val ssh: SshClient = when (auth) {
                 AuthType.KEY -> {
-                    val file = File(UriHelper.uri(token).path)
+                    val file = Filesystem.that(token).absolute().asFile
                     if (passphrase !== null) {
                         SshClient(connectionHost, connectionPort, user, timeout, file, passphrase)
                     } else {
@@ -51,73 +70,100 @@ abstract class SshSpec : Logged, CommandSpec() {
                 else -> SshClient(connectionHost, connectionPort, user, timeout, token.toCharArray())
             }
 
-            ThreadSshProperty.set(ssh)
+            SshClientStorage.set(ssh)
         } catch (e: Exception) {
             Assertions.fail<Any>(e.message, e)
         }
     }
 
+    /**
+     * Closing the ssh connection.
+     */
     open fun disconnect() {
         this.check()
 
-        ThreadSshProperty.close()
+        SshClientStorage.close()
     }
 
-    override fun run(command: String) {
+    /**
+     * Run ssh command.
+     *
+     * @param command String
+     */
+    open fun run(command: String) {
         this.check()
 
+        var sshCommand: SshCommand? = null
         var commandResult: CommandResult? = null
 
         try {
-            var ssh = SshCommand(command)
+            sshCommand = SshCommand(command)
 
-            ssh.waitFor(ThreadTimeoutProperty.get())
+            sshCommand.waitFor(CommandStorage.getTimeout())
 
-            if (!ssh.exited()) {
-                ssh.destroy()
+            if (!sshCommand.isExited()) {
+                sshCommand.terminate()
 
                 Assertions.fail<Any>("Timout error")
             }
 
-            commandResult = CommandResult(ssh.exitCode(), ssh.read())
+            commandResult = CommandResult(sshCommand.exitCode(), sshCommand.read())
         } catch (e: Exception) {
             Assertions.fail<Any>(e.message, e)
-        }
+        } finally {
+            if (sshCommand === null || commandResult === null) {
+                Assertions.fail<Any>("Failed to get command result.")
+            }
 
-        if (commandResult !== null) {
-            ThreadCommandResultProperty.set(commandResult)
-            this.attach(commandResult)
-            this.parse(commandResult)
+            CommandStorage.set(commandResult!!)
+            sshCommand!!.attach(commandResult)
+
+            val result = ConvertedResult(commandResult.content)
+            ConvertedResultStorage.set(result)
+            if (result.json !== null) {
+                sshCommand.attach(result.json!!)
+            }
         }
     }
 
-    override fun runInBackground(command: String) {
+    /**
+     * Run an ssh command in the background.
+     *
+     * @param command String
+     */
+    open fun runInBackground(command: String) {
         this.check()
 
-        val ssh = try {
-            SshCommand(command)
+        try {
+            SshCommand(command).toBackground()
         } catch (e: Exception) {
             Assertions.fail<Any>(e.message, e)
-        } as SshCommand
-
-        this.inBackground(ssh)
+        }
     }
 
-    override fun tail(timeout: Int, command: String, search: String) {
+    /**
+     * Run the ssh command until the content appears within the specified time.
+     *
+     * @param timeout Int
+     * @param command String
+     * @param search String
+     */
+    open fun search(timeout: Int, command: String, search: String) {
         this.check()
 
         val start = System.currentTimeMillis()
         val millis = TimeUnit.SECONDS.toMillis(timeout.toLong() + 1)
 
+        var sshCommand: SshCommand? = null
         var commandResult: CommandResult? = null
 
         try {
             var content = ""
-            var sshCommand = SshCommand(command)
+            sshCommand = SshCommand(command)
 
-            loop@ while ((System.currentTimeMillis() - start) <= millis) {
+            while ((System.currentTimeMillis() - start) <= millis) {
                 try {
-                    if (sshCommand.exited()) {
+                    if (sshCommand!!.isExited()) {
                         content += sshCommand.safeRead()
 
                         sshCommand = SshCommand(command)
@@ -130,69 +176,107 @@ abstract class SshSpec : Logged, CommandSpec() {
 
                     Assertions.assertThat(temp).contains(search)
 
-                    sshCommand.destroy()
+                    sshCommand.terminate()
 
                     commandResult = CommandResult(
                         sshCommand.exitCode(),
                         sshCommand.trim(content + temp),
                     )
 
-                    break@loop
+                    break
                 } catch (_: AssertionError) {
                 }
             }
         } catch (e: Exception) {
             Assertions.fail<Any>(e.message, e)
-        }
+        } finally {
+            if (commandResult === null) {
+                Assertions.fail<Any>(
+                    "Within '$timeout' seconds the result of the command execution does not contain '$search'",
+                )
+            }
 
-        if (commandResult === null) {
-            Assertions.fail<Any>("Within '$timeout' seconds the result of the command execution does not contain '$search'")
-        }
+            CommandStorage.set(commandResult!!)
+            sshCommand!!.attach(commandResult)
 
-        ThreadCommandResultProperty.set(commandResult!!)
-        this.attach(commandResult)
-        this.parse(commandResult)
+            val result = ConvertedResult(commandResult.content)
+            ConvertedResultStorage.set(result)
+            if (result.json !== null) {
+                sshCommand.attach(result.json!!)
+            }
+        }
     }
 
+    /**
+     * File upload via sftp.
+     *
+     * @param source String
+     * @param target String
+     */
     open fun upload(source: String, target: String) {
         this.check()
 
         this.sftp(
-            UriHelper.uri(source).path,
+            Filesystem.that(source).absolute().path,
             target,
             SftpMethod.UPLOAD,
-            ConfigurationProperty.get(ConfigurationProperty.MODULE_SSH_UPLOAD_TIMEOUT, 15000),
+            ConfigurationStorage.get(ConfigurationStorage.MODULE_SSH_UPLOAD_TIMEOUT, 15000),
         )
     }
 
+    /**
+     * Downloading a file via sftp.
+     * @param source String
+     * @param target String
+     */
     open fun download(source: String, target: String) {
         this.check()
 
         this.sftp(
             source,
-            UriHelper.uri(target, true).path,
+            Filesystem.that(target).file().path,
             SftpMethod.DOWNLOAD,
-            ConfigurationProperty.get(ConfigurationProperty.MODULE_SSH_DOWNLOAD_TIMEOUT, 15000),
+            ConfigurationStorage.get(ConfigurationStorage.MODULE_SSH_DOWNLOAD_TIMEOUT, 15000),
         )
     }
 
+    /**
+     * Downloading or uploading a file via sftp.
+     *
+     * @param source String
+     * @param target String
+     * @param method SftpMethod
+     * @param timeout Int
+     */
     private fun sftp(source: String, target: String, method: SftpMethod, timeout: Int) {
         val timeoutMillis = TimeUnit.SECONDS.toMillis(timeout.toLong())
 
         try {
-            val ssh = ThreadSshProperty.get()!!
+            val ssh = SshClientStorage.get()!!
+            var file: File? = null
 
             when (method) {
-                SftpMethod.UPLOAD -> ssh.putFile(File(source), target, timeoutMillis)
-                SftpMethod.DOWNLOAD -> ssh.getFile(source, File(target), timeoutMillis)
+                SftpMethod.UPLOAD -> {
+                    file = File(source)
+                    ssh.putFile(file, target, timeoutMillis)
+                }
+                SftpMethod.DOWNLOAD -> {
+                    file = File(target)
+                    ssh.getFile(source, file, timeoutMillis)
+                }
             }
+
+            Allure.attachment(FilenameUtils.getName(file.path), file.inputStream())
         } catch (e: Exception) {
             Assertions.fail<Any>(e.message, e)
         }
     }
 
+    /**
+     * Check that an ssh connection is open.
+     */
     private fun check() {
-        if (ThreadSshProperty.get() === null) {
+        if (SshClientStorage.get() === null) {
             Assertions.fail<Any>("SSH connection not open")
         }
     }

@@ -1,5 +1,6 @@
 plugins {
     id("org.jetbrains.kotlin.jvm") version embeddedKotlinVersion
+    id("org.jetbrains.dokka") version "1.7.20" apply false
     id("com.avast.gradle.docker-compose") version "0.16.11" apply false
     id("io.qameta.allure") version "2.11.2"
 }
@@ -11,8 +12,11 @@ repositories {
     gradlePluginPortal()
 }
 
+val globalAspectjVersion = "1.9.19"
+
 subprojects {
     apply(plugin = "org.jetbrains.kotlin.jvm")
+    apply(plugin = "org.jetbrains.dokka")
     apply(plugin = "com.avast.gradle.docker-compose")
     apply(plugin = "io.qameta.allure")
 
@@ -23,9 +27,8 @@ subprojects {
     }
 
     dependencies {
-        api("org.aspectj:aspectjrt:1.9.19")
-        api("org.aspectj:aspectjweaver:1.9.19")
-        api("com.github.Steppschuh:Java-Markdown-Generator:1.3.2")
+        api("org.aspectj:aspectjrt:$globalAspectjVersion")
+        api("org.aspectj:aspectjweaver:$globalAspectjVersion")
     }
 
     configurations {
@@ -37,7 +40,7 @@ subprojects {
     allure {
         adapter {
             autoconfigureListeners.set(false)
-            aspectjVersion.set("1.9.19")
+            aspectjVersion.set(globalAspectjVersion)
             aspectjWeaver.set(true)
         }
     }
@@ -66,5 +69,21 @@ subprojects {
             showStandardStreams = true
             exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
         }
+    }
+}
+
+val downloadOnly: Configuration by configurations.creating {
+    isTransitive = false
+}
+
+dependencies {
+    downloadOnly("org.aspectj:aspectjweaver:$globalAspectjVersion")
+}
+
+tasks.register<Copy>("download") {
+    from(downloadOnly)
+    into("runtime/")
+    rename {fileName: String ->
+        fileName.replace("aspectjweaver-$globalAspectjVersion", "aspectj")
     }
 }

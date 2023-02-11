@@ -24,15 +24,15 @@ import io.cucumber.plugin.event.TestStep
 import io.cucumber.plugin.event.TestStepFinished
 import io.cucumber.plugin.event.WriteEvent
 import tech.mamontov.blackradish.core.aspects.ReplacementAspect
-import tech.mamontov.blackradish.core.helpers.UriHelper
+import tech.mamontov.blackradish.core.helpers.Filesystem
+import tech.mamontov.blackradish.core.interfaces.Format
+import tech.mamontov.blackradish.core.interfaces.Formats
 import tech.mamontov.blackradish.core.interfaces.Logged
-import tech.mamontov.blackradish.core.properties.ConfigurationProperty
-import tech.mamontov.blackradish.core.utils.formatter.OutputAppendable
-import tech.mamontov.blackradish.core.utils.formatter.OutputUtf8StreamWriter
-import tech.mamontov.blackradish.core.utils.formatter.TestSources
-import tech.mamontov.blackradish.core.utils.formatter.formats.Format
-import tech.mamontov.blackradish.core.utils.formatter.formats.Formats
-import tech.mamontov.blackradish.core.utils.reflecation.Reflecation
+import tech.mamontov.blackradish.core.output.OutputAppendable
+import tech.mamontov.blackradish.core.output.OutputUtf8StreamWriter
+import tech.mamontov.blackradish.core.reflecation.Reflecation
+import tech.mamontov.blackradish.core.sources.TestSources
+import tech.mamontov.blackradish.core.storages.ConfigurationStorage
 import java.io.BufferedReader
 import java.io.IOException
 import java.io.OutputStream
@@ -43,10 +43,22 @@ import java.util.UUID
 import kotlin.math.max
 import io.cucumber.core.stepexpression.Argument as StepArgument
 
+/**
+ * Default plugin for formatting
+ *
+ * @author Dmitry Mamontov
+ *
+ * @property formats Formats
+ * @property fileName String?
+ * @property sources TestSources
+ * @property output OutputAppendable
+ * @property indexMap MutableMap<UUID, Int>
+ * @constructor
+ */
 @Suppress("UNUSED_PARAMETER", "UNCHECKED_CAST")
 class Formatter(output: OutputStream) : Logged, ConcurrentEventListener, ColorAware {
     private var formats: Formats = Formats.ansi()
-    private var file: String? = null
+    private var fileName: String? = null
     private val sources: TestSources = TestSources()
     private val output: OutputAppendable = OutputAppendable(OutputUtf8StreamWriter(output))
     private val indexMap: MutableMap<UUID, Int> = HashMap()
@@ -59,10 +71,20 @@ class Formatter(output: OutputStream) : Logged, ConcurrentEventListener, ColorAw
         private const val LOCATION_INDENT = "         "
     }
 
+    /**
+     * Set monochrome format
+     *
+     * @param monochrome Boolean
+     */
     override fun setMonochrome(monochrome: Boolean) {
         formats = if (monochrome) Formats.monochrome() else Formats.ansi()
     }
 
+    /**
+     * Subscribe to events
+     *
+     * @param publisher EventPublisher
+     */
     override fun setEventPublisher(publisher: EventPublisher) {
         publisher.registerHandlerFor(
             TestRunStarted::class.java,
@@ -93,15 +115,29 @@ class Formatter(output: OutputStream) : Logged, ConcurrentEventListener, ColorAw
         ) { event: TestRunFinished -> this.handle(event) }
     }
 
+    /**
+     * Print logotype
+     *
+     * @param event TestRunStarted
+     */
     private fun handle(event: TestRunStarted) {
-        this.output.dividing()
         // TODO Print ascii logotype
     }
 
+    /**
+     * Add event to sources
+     *
+     * @param event TestSourceRead
+     */
     private fun handle(event: TestSourceRead) {
         sources.addReadEvent(event.uri, event)
     }
 
+    /**
+     * Print full feature
+     *
+     * @param event TestCaseStarted
+     */
     private fun handle(event: TestCaseStarted) {
         val case = event.testCase
 
@@ -114,13 +150,18 @@ class Formatter(output: OutputStream) : Logged, ConcurrentEventListener, ColorAw
         this.printScenario(case)
     }
 
+    /**
+     * Print steps
+     *
+     * @param event TestStepFinished
+     */
     private fun handle(event: TestStepFinished) {
         if (event.testStep is PickleStepTestStep) {
             this.printComments(event.testStep as PickleStepTestStep)
             this.printStep(event.testStep as PickleStepTestStep, event)
 
             try {
-                if (ConfigurationProperty.get(ConfigurationProperty.DEBUG_SHOW_TRACE, false)) {
+                if (ConfigurationStorage.get(ConfigurationStorage.DEBUG_SHOW_TRACE, false)) {
                     this.printStack(event.testStep as PickleStepTestStep)
                 }
             } catch (_: Exception) {
@@ -130,6 +171,11 @@ class Formatter(output: OutputStream) : Logged, ConcurrentEventListener, ColorAw
         this.printError(event)
     }
 
+    /**
+     * Print write data
+     *
+     * @param event WriteEvent
+     */
     private fun handle(event: WriteEvent) {
         output.println()
 
@@ -148,6 +194,11 @@ class Formatter(output: OutputStream) : Logged, ConcurrentEventListener, ColorAw
         output.println()
     }
 
+    /**
+     * Print media data
+     *
+     * @param event EmbedEvent
+     */
     private fun handle(event: EmbedEvent) {
         output.println()
         output.println(
@@ -156,33 +207,45 @@ class Formatter(output: OutputStream) : Logged, ConcurrentEventListener, ColorAw
         output.println()
     }
 
+    /**
+     * Close output
+     *
+     * @param event TestRunFinished
+     */
     private fun handle(event: TestRunFinished) {
-        this.output.dividing()
-        // TODO Print help text
         output.close()
     }
 
+    /**
+     * Print feature
+     *
+     * @param case TestCase
+     */
     private fun printFeature(case: TestCase) {
-        if (this.file !== null && this.file == case.uri.toString()) {
+        if (this.fileName !== null && this.fileName == case.uri.toString()) {
             return
         }
 
-        if (this.file !== null) {
+        if (this.fileName !== null) {
             output.println()
         }
 
-        this.file = case.uri.toString()
+        this.fileName = case.uri.path ?: case.uri.toString()
 
         var featureOptional: Optional<Feature>? = null
         try {
-            featureOptional = this.sources.feature(UriHelper.uri(this.file.toString()))
+            featureOptional = this.sources.feature(Filesystem.that(this.fileName!!).absolute().uri)
         } catch (e: Exception) {
             logger.error(
-                "Error getting feature document from " + this.file + ". " + e.message,
+                "Error getting feature document from " + this.fileName + ". " + e.message,
+            )
+        } catch (e: AssertionError) {
+            logger.error(
+                "Error getting feature document from " + this.fileName + ". " + e.message,
             )
         }
 
-        output.println(this.format(UriHelper.relativize(case.uri).schemeSpecificPart))
+        output.println(this.format(Filesystem.relativize(case.uri).schemeSpecificPart))
 
         if (featureOptional === null || featureOptional.isEmpty) {
             return
@@ -198,6 +261,11 @@ class Formatter(output: OutputStream) : Logged, ConcurrentEventListener, ColorAw
         }
     }
 
+    /**
+     * Print tags
+     *
+     * @param case TestCase
+     */
     private fun printTags(case: TestCase) {
         if (case.tags.isNotEmpty()) {
             output.println(
@@ -208,22 +276,31 @@ class Formatter(output: OutputStream) : Logged, ConcurrentEventListener, ColorAw
         }
     }
 
+    /**
+     * Print scenario
+     *
+     * @param case TestCase
+     */
     private fun printScenario(case: TestCase) {
         val definition = this.format(case)
 
         output.println(
             SCENARIO_INDENT + definition + indent(case, SCENARIO_INDENT + definition).trimEnd() + " " + this.format(
-                UriHelper.relativize(case.uri).schemeSpecificPart + ":" + case.location.line,
+                Filesystem.relativize(case.uri).schemeSpecificPart + ":" + case.location.line,
             ),
         )
     }
 
+    /**
+     * Print comments
+     *
+     * @param step PickleStepTestStep
+     */
     private fun printComments(step: PickleStepTestStep) {
         val comment: String = sources.raw(step.uri, step.step.line - 2)
-        val upperCaseComment = comment.uppercase(Locale.getDefault())
 
         try {
-            if (upperCaseComment.startsWith("#LOG") || upperCaseComment.startsWith("#NOTE")) {
+            if (comment.startsWith("#LOG", true) || comment.startsWith("#NOTE", true)) {
                 output.println(
                     STEP_INDENT + formats.get("output").text(ReplacementAspect.replace(comment)),
                 )
@@ -235,6 +312,12 @@ class Formatter(output: OutputStream) : Logged, ConcurrentEventListener, ColorAw
         }
     }
 
+    /**
+     * Print step
+     *
+     * @param step PickleStepTestStep
+     * @param event TestStepFinished
+     */
     private fun printStep(step: PickleStepTestStep, event: TestStepFinished) {
         val statusName = event.result.status.name.lowercase(Locale.ROOT)
 
@@ -254,7 +337,7 @@ class Formatter(output: OutputStream) : Logged, ConcurrentEventListener, ColorAw
 
         var location = ""
         if (event.result.status === Status.FAILED) {
-            location = " # " + UriHelper.relativize(step.uri).schemeSpecificPart + ":" + step.step.location.line
+            location = " # " + Filesystem.relativize(step.uri).schemeSpecificPart + ":" + step.step.location.line
         }
 
         output.println(
@@ -270,7 +353,7 @@ class Formatter(output: OutputStream) : Logged, ConcurrentEventListener, ColorAw
                         output.println(TABLES_INDENT + formats.get(statusName).text("\"\"\""))
 
                         try {
-                            (Reflecation.get(argument, "content") as String).split(System.lineSeparator())
+                            (Reflecation.getValue(argument, "content") as String).split(System.lineSeparator())
                                 .dropLastWhile { it.isEmpty() }.forEach { line: String ->
                                     output.println(TABLES_INDENT + formats.get(statusName).text(line))
                                 }
@@ -293,6 +376,11 @@ class Formatter(output: OutputStream) : Logged, ConcurrentEventListener, ColorAw
         }
     }
 
+    /**
+     * Print debug stack
+     *
+     * @param step PickleStepTestStep
+     */
     private fun printStack(step: PickleStepTestStep) {
         output.println(LOCATION_INDENT + this.format(step.codeLocation))
         try {
@@ -321,7 +409,7 @@ class Formatter(output: OutputStream) : Logged, ConcurrentEventListener, ColorAw
                     }
 
                     is DataTableArgument -> {
-                        val tableArguments = Reflecation.get(argument, "argument") as List<*>
+                        val tableArguments = Reflecation.getValue(argument, "argument") as List<*>
 
                         output.println(
                             LOCATION_INDENT + this.format(
@@ -336,6 +424,11 @@ class Formatter(output: OutputStream) : Logged, ConcurrentEventListener, ColorAw
         }
     }
 
+    /**
+     * Print error
+     *
+     * @param event TestStepFinished
+     */
     private fun printError(event: TestStepFinished) {
         val result = event.result
         if (result.error === null || result.status === Status.SKIPPED) {
@@ -346,7 +439,7 @@ class Formatter(output: OutputStream) : Logged, ConcurrentEventListener, ColorAw
             val status = result.status.name.lowercase(Locale.ROOT)
             var message = result.error.message!!.replace("\n", " ")
 
-            if (ConfigurationProperty.get(ConfigurationProperty.DEBUG_SHOW_STACKTRACE, false)) {
+            if (ConfigurationStorage.get(ConfigurationStorage.DEBUG_SHOW_STACKTRACE, false)) {
                 message = ExceptionUtils.printStackTrace(result.error)
             }
 
@@ -360,18 +453,48 @@ class Formatter(output: OutputStream) : Logged, ConcurrentEventListener, ColorAw
         }
     }
 
+    /**
+     * Format text by keyword
+     *
+     * @param keyword String
+     * @param text String
+     * @return String
+     */
     private fun format(keyword: String, text: String): String {
         return STEP_INDENT + keyword + text
     }
 
+    /**
+     * Format test case
+     *
+     * @param case TestCase
+     * @return String
+     */
     private fun format(case: TestCase): String {
         return formats.get("pending_arg").text(case.keyword) + ": " + case.name
     }
 
+    /**
+     * Format location
+     *
+     * @param location String
+     * @return String
+     */
     private fun format(location: String): String {
         return formats.get("comment").text("# $location")
     }
 
+    /**
+     * Format text with arguments
+     *
+     * @param keyword String
+     * @param text String
+     * @param arguments List<Argument>
+     * @param keywordFormat Format
+     * @param textFormat Format
+     * @param argFormat Format
+     * @return String
+     */
     private fun format(
         keyword: String,
         text: String,
@@ -412,11 +535,23 @@ class Formatter(output: OutputStream) : Logged, ConcurrentEventListener, ColorAw
         return result.toString()
     }
 
+    /**
+     * Generate indent
+     *
+     * @param step TestCase
+     * @param prefix String
+     * @return String
+     */
     private fun indent(step: TestCase, prefix: String): String {
         val padding = this.indexMap.getOrDefault(step.id, 0) - prefix.length
         return " ".repeat(if (padding >= 0) padding else 1)
     }
 
+    /**
+     * Calculate indent
+     *
+     * @param case TestCase
+     */
     private fun calculateIndent(case: TestCase) {
         val longestStep = case.testSteps.stream().filter { obj: TestStep? -> obj is PickleStepTestStep }
             .map { obj: TestStep? -> obj as PickleStepTestStep }.map { obj: PickleStepTestStep -> obj.step }
@@ -430,9 +565,15 @@ class Formatter(output: OutputStream) : Logged, ConcurrentEventListener, ColorAw
         indexMap[case.id] = max(longestStep, this.format(case).length) + 1
     }
 
+    /**
+     * Get arguments from test step
+     *
+     * @param testStep TestStep
+     * @return List<StepArgument>
+     */
     private fun arguments(testStep: TestStep): List<StepArgument> {
-        return Reflecation.get(
-            Reflecation.get(testStep, "definitionMatch"),
+        return Reflecation.getValue(
+            Reflecation.getValue(testStep, "definitionMatch"),
             "arguments",
             true,
         ) as List<StepArgument>

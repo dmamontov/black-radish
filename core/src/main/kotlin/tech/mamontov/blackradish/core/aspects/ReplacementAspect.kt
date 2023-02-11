@@ -21,11 +21,29 @@ import tech.mamontov.blackradish.core.lookups.FakerLookup
 import tech.mamontov.blackradish.core.lookups.LowerLookup
 import tech.mamontov.blackradish.core.lookups.MathLookup
 import tech.mamontov.blackradish.core.lookups.UpperLookup
-import tech.mamontov.blackradish.core.utils.reflecation.Reflecation
+import tech.mamontov.blackradish.core.reflecation.Reflecation
 
+/**
+ * AspectJ aspect to replace variables in steps
+ *
+ * @see [AspectJ](https://www.eclipse.org/aspectj/)
+ *
+ * @author Dmitry Mamontov
+ */
 @Aspect
-@Suppress("UNCHECKED_CAST", "UNUSED_PARAMETER")
-open class ReplacementAspect : Logged {
+@Suppress(
+    "UNCHECKED_CAST",
+    "UNUSED_PARAMETER",
+    "UNUSED",
+    "KDocUnresolvedReference",
+)
+class ReplacementAspect : Logged {
+    /**
+     * @see [StringSubstitutor](https://commons.apache.org/proper/commons-text/apidocs/org/apache/commons/text/StringSubstitutor.html)
+     *
+     * @property lookups Map<String, StringLookup>
+     * @property substitutor StringSubstitutor
+     */
     companion object {
         private val lookups: Map<String, StringLookup> = object : HashMap<String, StringLookup>() {
             init {
@@ -50,29 +68,45 @@ open class ReplacementAspect : Logged {
             this.substitutor.isEnableUndefinedVariableException = true
         }
 
-        fun replace(element: String): String {
+        /**
+         * Replace string with **[StringSubstitutor]**
+         *
+         * @param string String
+         * @return String
+         */
+        fun replace(string: String): String {
             try {
-                return this.substitutor.replace(element)
+                return this.substitutor.replace(string)
             } catch (e: Exception) {
                 Assertions.fail<Any>(e.message, e)
             }
 
-            return element
+            return string
         }
     }
 
+    /**
+     * Pointcut for **[io.cucumber.core.runner.PickleStepDefinitionMatch.runStep]**
+     *
+     * @param state: TestCaseState?
+     */
     @Pointcut("execution (* io.cucumber.core.runner.PickleStepDefinitionMatch.runStep(..)) && args(state)")
-    @Suppress("unused")
-    protected open fun replacement(state: TestCaseState?) {
+    private fun runStep(state: TestCaseState?) {
     }
 
-    @Before(value = "replacement(state)")
-    fun replacement(jp: JoinPoint, state: TestCaseState?) {
-        if (!Reflecation.match(jp.getThis(), "io.cucumber.core.runner.PickleStepDefinitionMatch")) {
+    /**
+     * Action before **[io.cucumber.core.runner.PickleStepDefinitionMatch.runStep]**
+     *
+     * @param jp JoinPoint
+     * @param state TestCaseState?
+     */
+    @Before(value = "runStep(state)")
+    fun runStep(jp: JoinPoint, state: TestCaseState?) {
+        if (!Reflecation.instanceOf(jp.getThis(), "io.cucumber.core.runner.PickleStepDefinitionMatch")) {
             return
         }
 
-        val arguments = Reflecation.get(jp.getThis(), "arguments", true) as List<Argument>
+        val arguments = Reflecation.getValue(jp.getThis(), "arguments", true) as List<Argument>
         arguments.forEach { argument: Argument ->
             when (argument) {
                 is ExpressionArgument -> this.replaceExpression(argument)
@@ -82,8 +116,13 @@ open class ReplacementAspect : Logged {
         }
     }
 
+    /**
+     * Replace string in Expression argument
+     *
+     * @param argument Argument
+     */
     private fun replaceExpression(argument: Argument) {
-        val textArgument = Reflecation.get(argument, "argument") as io.cucumber.cucumberexpressions.Argument<*>
+        val textArgument = Reflecation.getValue(argument, "argument") as io.cucumber.cucumberexpressions.Argument<*>
 
         val group = textArgument.group
         val currentValue = group.value ?: return
@@ -100,6 +139,11 @@ open class ReplacementAspect : Logged {
         }
     }
 
+    /**
+     * Replace string in DataTable argument
+     *
+     * @param argument Argument
+     */
     private fun replaceDataTable(argument: Argument) {
         val textArgument = Reflecation.field(argument, "argument")
         val rows = textArgument[argument] as List<MutableList<String>>
@@ -109,6 +153,11 @@ open class ReplacementAspect : Logged {
         }
     }
 
+    /**
+     * Replace string in DocString argument
+     *
+     * @param argument Argument
+     */
     private fun replaceDocString(argument: Argument) {
         val contentArgument = Reflecation.field(argument, "content")
 

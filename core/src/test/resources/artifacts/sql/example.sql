@@ -1,0 +1,3 @@
+DROP TABLE IF EXISTS example;
+CREATE TABLE IF NOT EXISTS example (localAS INT, remoteAS INT);
+INSERT INTO example (localAS, remoteAS) VALUES (65551, 65551), (65551, 65552);

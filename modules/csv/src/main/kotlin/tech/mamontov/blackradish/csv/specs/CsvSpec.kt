@@ -1,107 +1,104 @@
 package tech.mamontov.blackradish.csv.specs
 
 import io.cucumber.datatable.DataTable
+import io.qameta.allure.Allure
 import org.apache.commons.csv.CSVFormat
 import org.apache.commons.csv.CSVPrinter
 import org.apache.commons.csv.CSVRecord
+import org.apache.commons.io.FilenameUtils
 import org.apache.commons.text.StringEscapeUtils
 import org.assertj.core.api.Assertions
 import tech.mamontov.blackradish.core.asserts.FileAssert
+import tech.mamontov.blackradish.core.data.ConvertedResult
+import tech.mamontov.blackradish.core.helpers.AnyObject
+import tech.mamontov.blackradish.core.helpers.Filesystem
 import tech.mamontov.blackradish.core.interfaces.Logged
-import tech.mamontov.blackradish.csv.parsers.CsvParser
-import tech.mamontov.blackradish.csv.properties.ThreadBuilderProperty
-import tech.mamontov.blackradish.filesystem.properties.ThreadFileContentProperty
-import tech.mamontov.blackradish.filesystem.specs.FilesystemSpec
+import tech.mamontov.blackradish.core.storages.ConvertedResultStorage
+import tech.mamontov.blackradish.csv.parsers.CsvConverter
+import tech.mamontov.blackradish.csv.storages.CsvBuilderStorage
 import java.io.File
 import java.io.FileReader
 import java.io.Reader
+import java.nio.charset.Charset
 
-abstract class CsvSpec : Logged, FilesystemSpec() {
-
-    private val availableProperties: List<String> = listOf(
-        "charset",
-        "columnTypes",
-        "commentChar",
-        "cryptoFilterClassName",
-        "cryptoFilterParameterTypes",
-        "cryptoFilterParameters",
-        "defectiveHeaders",
-        "fileExtension",
-        "fileTailParts",
-        "fileTailPattern",
-        "fileTailPrepend",
-        "fixedWidths",
-        "headerline",
-        "ignoreNonParseableLines",
-        "indexedFiles",
-        "isHeaderFixedWidth",
-        "missingValue",
-        "quotechar",
-        "quoteStyle",
-        "locale",
-        "maxDataLines",
-        "separator",
-        "skipLeadingLines",
-        "skipLeadingDataLines",
-        "suppressHeaders",
-        "timestampFormat",
-        "timeFormat",
-        "dateFormat",
-        "timeZoneName",
-        "trimHeaders",
-        "trimValues",
-        "useDateTimeFormatter",
-    )
-
+/**
+ * Csv spec
+ *
+ * @author Dmitry Mamontov
+ */
+open class CsvSpec : Logged {
+    /**
+     * Sets a delimiter.
+     *
+     * @param delimiter String
+     */
     open fun delimiter(delimiter: String) {
         try {
-            ThreadBuilderProperty.get().setDelimiter(StringEscapeUtils.unescapeJava(delimiter))
+            CsvBuilderStorage.get().setDelimiter(StringEscapeUtils.unescapeJava(delimiter))
         } catch (e: IllegalArgumentException) {
             Assertions.fail<Any>(e.message, e)
         }
     }
 
-    open fun separator(separator: String) {
+    /**
+     * Sets the line separator.
+     *
+     * @param separator String
+     */
+    open fun lineSeparator(separator: String) {
         Assertions.assertThat(separator).isIn("\\n", "\\r\\n", "\\r")
         try {
-            ThreadBuilderProperty.get().setRecordSeparator(StringEscapeUtils.unescapeJava(separator))
+            CsvBuilderStorage.get().setRecordSeparator(StringEscapeUtils.unescapeJava(separator))
         } catch (e: IllegalArgumentException) {
             Assertions.fail<Any>(e.message, e)
         }
     }
 
-    open fun create(path: String, content: DataTable) {
-        val out = StringBuilder()
+    /**
+     * Creates a file with content.
+     *
+     * @param path String
+     * @param dataTable DataTable
+     */
+    open fun create(path: String, dataTable: DataTable) {
+        val file = Filesystem.that(path).file().asFile
 
         try {
-            CSVPrinter(out, ThreadBuilderProperty.get().build()).use { printer: CSVPrinter ->
-                content.asLists().forEach { row: List<String> ->
+            val writer = file.bufferedWriter(Charset.defaultCharset())
+
+            CSVPrinter(writer, CsvBuilderStorage.get().build()).use { printer: CSVPrinter ->
+                dataTable.asLists().forEach { row: List<String> ->
                     printer.printRecord(*row.toTypedArray())
                 }
+                printer.flush()
             }
         } catch (e: Exception) {
             Assertions.fail<Any>(e.message, e)
+        } finally {
+            Allure.addAttachment(FilenameUtils.getName(path), file.inputStream())
         }
-
-        Assertions.assertThat(out).`as`("Csv file cannot be empty").isNotEmpty
-
-        this.create(path, out.toString())
     }
 
-    open fun read(path: String, firstLine: Boolean = false, headers: List<String>? = null) {
-        val absolutePath = this.exists(path, false)!!.path
+    /**
+     * Opens a file.
+     *
+     * @param path String
+     * @param firstLine Boolean
+     * @param headers List<String>?
+     */
+    open fun `open`(path: String, firstLine: Boolean = false, headers: List<String>? = null) {
+        val absolutePath = Filesystem.that(path).file().path
 
         val records: MutableList<Any> = mutableListOf()
         val list: MutableList<List<Any>> = mutableListOf()
 
+        val file = File(absolutePath)
+        Assertions.assertThat(file).isFile
+        FileAssert.assertThat(file).isCsv
+
         try {
-            val file = File(absolutePath)
-            Assertions.assertThat(file).isFile
-            FileAssert.assertThat(file).isMimeTypeEquals("text/csv")
-
             val reader: Reader = FileReader(absolutePath)
-
-            val builder: CSVFormat.Builder = ThreadBuilderProperty.reload()
+            val builder: CSVFormat.Builder = CsvBuilderStorage.reload()
 
             if (firstLine) {
                 builder
@@ -119,9 +116,17 @@ abstract class CsvSpec : Logged, FilesystemSpec() {
                 list.add(record.toList())
 
                 if (csvParser.headerMap !== null && csvParser.headerMap.isNotEmpty()) {
-                    records.add(record.toMap())
+                    records.add(
+                        record.toMap().mapValues {
+                            AnyObject.that(it.value).parse()
+                        },
+                    )
                 } else {
-                    records.add(record.toList())
+                    records.add(
+                        record.toList().map {
+                            AnyObject.that(it).parse()
+                        },
+                    )
                 }
             }
 
@@ -129,55 +134,58 @@ abstract class CsvSpec : Logged, FilesystemSpec() {
             csvParser.close()
         } catch (e: Exception) {
             Assertions.fail<Any?>(e.message, e)
+        } finally {
+            val json = AnyObject.that(records).asJsonString
+            val result = ConvertedResult(json, CsvConverter(list))
+
+            ConvertedResultStorage.set(result)
+
+            Allure.addAttachment(FilenameUtils.getName(absolutePath), file.inputStream())
+            Allure.addAttachment(FilenameUtils.getName(absolutePath) + ".json", json)
         }
-
-        Assertions.assertThat(records).`as`("Failed to open csv file or it is empty").isNotEmpty
-
-        super.read(absolutePath, CsvParser(list, records))
     }
 
-    open fun readWithoutFirstLine(path: String) {
-        this.read(path, true, null)
+    /**
+     * Opens the file, specifying that the first line contains the headers.
+     *
+     * @param path String
+     */
+    open fun openWithoutFirstLine(path: String) {
+        this.`open`(path, true, null)
     }
 
-    open fun readWithHeaders(path: String, dataTable: DataTable) {
+    /**
+     * Opens a file with headers.
+     *
+     * @param path String
+     * @param dataTable DataTable
+     */
+    open fun openWithHeaders(path: String, dataTable: DataTable) {
         val headers = dataTable.asLists()
 
         Assertions.assertThat(headers).`as`("Headers can only be one line").hasSize(1)
 
-        this.read(path, false, headers.first())
+        this.`open`(path, false, headers.first())
     }
 
-    open fun contentIs(content: DataTable, not: Boolean) {
+    /**
+     * Compares content.
+     *
+     * @param dataTable DataTable
+     * @param not Boolean
+     */
+    open fun contentIs(dataTable: DataTable, not: Boolean) {
         Assertions.assertThat(
-            ThreadFileContentProperty.get().parser,
+            ConvertedResultStorage.get().converter,
         ).`as`("There is no open csv file.")
-            .isInstanceOf(CsvParser::class.java)
+            .isInstanceOf(CsvConverter::class.java)
 
-        val parser = ThreadFileContentProperty.get().parser as CsvParser
+        val parser = ConvertedResultStorage.get().converter as CsvConverter
 
         if (not) {
-            Assertions.assertThat(parser.list).isNotEqualTo(content.asLists())
+            Assertions.assertThat(parser.list).isNotEqualTo(dataTable.asLists())
         } else {
-            Assertions.assertThat(parser.list).isEqualTo(content.asLists())
-        }
-    }
-
-    open fun connect(path: String, dataTable: DataTable? = null) {
-        var jdbc = "jdbc:relique:csv:"
-
-        try {
-            val file = File(this.exists(path, false)!!.path)
-            if (file.isDirectory) {
-                Assertions.assertThat(file).isNotEmptyDirectory
-            } else {
-                FileAssert.assertThat(file).isMimeTypeEquals("application/zip")
-                jdbc += "zip:"
-            }
-
-            super.connect(jdbc + file.path, dataTable, this.availableProperties)
-        } catch (e: Exception) {
-            Assertions.fail<Any?>(e.message, e)
+            Assertions.assertThat(parser.list).isEqualTo(dataTable.asLists())
         }
     }
 }

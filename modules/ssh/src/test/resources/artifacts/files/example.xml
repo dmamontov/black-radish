@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<root>
+    <element>
+        <localAS>65551</localAS>
+        <remoteAS>65551</remoteAS>
+    </element>
+    <element>
+        <localAS>65551</localAS>
+        <remoteAS>65552</remoteAS>
+    </element>
+</root>

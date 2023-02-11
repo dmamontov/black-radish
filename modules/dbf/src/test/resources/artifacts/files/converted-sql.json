@@ -1,0 +1,26 @@
+[
+  {
+    "LOCALAS": 65551,
+    "REMOTEAS": 65551,
+    "REMOTEIP": "10.10.10.10",
+    "ROUTERID": "192.0.2.1",
+    "STATUS": 5,
+    "UPTIME": "10:37:12"
+  },
+  {
+    "LOCALAS": 65551,
+    "REMOTEAS": 65552,
+    "REMOTEIP": "10.10.100.1",
+    "ROUTERID": "192.0.2.1",
+    "STATUS": 0,
+    "UPTIME": "10:38:27"
+  },
+  {
+    "LOCALAS": 65551,
+    "REMOTEAS": 65553,
+    "REMOTEIP": "10.100.10.9",
+    "ROUTERID": "192.0.2.1",
+    "STATUS": 1,
+    "UPTIME": "07:55:38"
+  }
+]

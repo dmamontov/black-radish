@@ -1,0 +1,11 @@
+[
+  "example/first/third/example_second.txt",
+  "example/first/third/.black-radish",
+  "example/first/second/example_first.txt",
+  "example/first/second/.black-radish",
+  ".gitkeep",
+  "example/first/third",
+  "example/first/second",
+  "example/first",
+  "example"
+]

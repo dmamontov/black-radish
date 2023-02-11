@@ -1,133 +1,107 @@
 package tech.mamontov.blackradish.command.specs
 
-import com.google.gson.Gson
-import io.cucumber.docstring.DocString
-import io.qameta.allure.Allure
 import org.apache.commons.io.output.ByteArrayOutputStream
 import org.assertj.core.api.Assertions
 import tech.mamontov.blackradish.command.commands.LocalCommand
 import tech.mamontov.blackradish.command.data.CommandResult
 import tech.mamontov.blackradish.command.data.CommandThreadFuture
-import tech.mamontov.blackradish.command.interfaces.Command
-import tech.mamontov.blackradish.command.properties.ThreadCommandResultProperty
-import tech.mamontov.blackradish.command.properties.ThreadTimeoutProperty
-import tech.mamontov.blackradish.core.data.Result
+import tech.mamontov.blackradish.command.storages.CommandStorage
+import tech.mamontov.blackradish.core.data.ConvertedResult
 import tech.mamontov.blackradish.core.interfaces.Logged
 import tech.mamontov.blackradish.core.interfaces.ThreadFuture
-import tech.mamontov.blackradish.core.parsers.Parser
-import tech.mamontov.blackradish.core.parsers.TemplateParser
-import tech.mamontov.blackradish.core.properties.ThreadContentProperty
-import tech.mamontov.blackradish.core.properties.ThreadFutureProperty
-import tech.mamontov.blackradish.core.properties.ThreadPoolProperty
 import tech.mamontov.blackradish.core.specs.base.BaseSpec
-import java.util.UUID
-import java.util.concurrent.ExecutorService
+import tech.mamontov.blackradish.core.storages.ConvertedResultStorage
+import tech.mamontov.blackradish.core.storages.ThreadFutureStorage
 import java.util.concurrent.TimeUnit
 
-abstract class CommandSpec : Logged, BaseSpec() {
+/**
+ * Command spec
+ *
+ * @author Dmitry Mamontov
+ *
+ * @property baseSpec BaseSpec
+ */
+open class CommandSpec : Logged {
+    private val baseSpec = BaseSpec()
+
+    /**
+     * Set the maximum command execution time.
+     *
+     * @param seconds Long
+     */
     open fun timeout(seconds: Long) {
-        ThreadTimeoutProperty.set(seconds)
+        CommandStorage.setTimeout(seconds)
     }
 
+    /**
+     * Run command.
+     *
+     * @param command String
+     */
     open fun run(command: String) {
+        var localCommand: LocalCommand? = null
         var commandResult: CommandResult? = null
 
         try {
-            val local = LocalCommand(command)
+            localCommand = LocalCommand(command)
 
-            local.waitFor(ThreadTimeoutProperty.get())
+            localCommand.waitFor(CommandStorage.getTimeout())
 
-            if (!local.exited()) {
-                local.destroy()
+            if (!localCommand.isExited()) {
+                localCommand.terminate()
 
                 Assertions.fail<Any>("Timout error")
             }
 
-            commandResult = CommandResult(local.exitCode(), local.read())
+            commandResult = CommandResult(localCommand.exitCode(), localCommand.read())
         } catch (e: Exception) {
             Assertions.fail<Any>(e.message, e)
-        }
+        } finally {
+            if (localCommand === null || commandResult === null) {
+                Assertions.fail<Any>("Failed to get command result.")
+            }
 
-        if (commandResult !== null) {
-            ThreadCommandResultProperty.set(commandResult)
-            this.attach(commandResult)
-            this.parse(commandResult)
-        }
+            CommandStorage.set(commandResult!!)
+            localCommand!!.attach(commandResult)
 
-        ThreadTimeoutProperty.reset()
-    }
-
-    open fun runInBackground(command: String) {
-        val local = try {
-            LocalCommand(command, ByteArrayOutputStream())
-        } catch (e: Exception) {
-            Assertions.fail<Any>(e.message, e)
-        } as LocalCommand
-
-        this.inBackground(local)
-    }
-
-    open fun saveBackgroundId(variable: String) {
-        val future: ThreadFuture? = ThreadFutureProperty.last()
-
-        Assertions.assertThat(future).`as`("Background command not running").isNotNull
-
-        super.save(future!!.uuid.toString(), variable)
-    }
-
-    open fun closeBackground(variable: String?) {
-        val future: CommandThreadFuture? = if (variable === null) {
-            ThreadFutureProperty.last()
-        } else {
-            ThreadFutureProperty.get(variable)
-        } as CommandThreadFuture?
-
-        Assertions.assertThat(future).`as`("Background command not running").isNotNull
-
-        var commandResult: CommandResult? = null
-
-        try {
-            future!!.destroy()
-
-            commandResult = CommandResult(
-                future.command.exitCode(),
-                future.command.read(),
-            )
-        } catch (e: Exception) {
-            Assertions.fail<Any>(e.message, e)
-        }
-
-        ThreadFutureProperty.remove(future!!.uuid.toString())
-
-        if (commandResult !== null) {
-            ThreadCommandResultProperty.set(commandResult)
-            this.attach(commandResult)
-            this.parse(commandResult)
+            val result = ConvertedResult(commandResult.content)
+            ConvertedResultStorage.set(result)
+            if (result.json !== null) {
+                localCommand.attach(result.json!!)
+            }
         }
     }
 
-    open fun tail(timeout: Int, command: String, search: String) {
+    /**
+     * Run the command until the content appears within the specified time.
+     *
+     * @param timeout Int
+     * @param command String
+     * @param search String
+     */
+    open fun search(timeout: Int, command: String, search: String) {
         val start = System.currentTimeMillis()
         val millis = TimeUnit.SECONDS.toMillis(timeout.toLong() + 1)
 
+        var localCommand: LocalCommand? = null
         var commandResult: CommandResult? = null
 
         try {
             var content = ""
 
-            var local = try {
+            localCommand = try {
                 LocalCommand(command)
             } catch (e: Exception) {
                 Assertions.fail<Any>(e.message, e)
             } as LocalCommand
 
-            loop@ while ((System.currentTimeMillis() - start) <= millis) {
+            while ((System.currentTimeMillis() - start) <= millis) {
                 try {
-                    if (local.exited()) {
-                        local = LocalCommand(command)
+                    if (localCommand!!.isExited()) {
+                        localCommand = LocalCommand(command)
                     }
 
-                    val temp = local.safeRead()
+                    val temp = localCommand.safeRead()
                     if (temp.isEmpty()) {
                         continue
                     }
@@ -136,83 +110,113 @@ abstract class CommandSpec : Logged, BaseSpec() {
 
                     Assertions.assertThat(content).contains(search)
 
-                    local.destroy()
+                    localCommand.terminate()
 
-                    commandResult = CommandResult(local.exitCode(), local.trim(content))
+                    commandResult = CommandResult(localCommand.exitCode(), localCommand.trim(content))
 
-                    break@loop
+                    break
                 } catch (_: AssertionError) {
                 }
             }
         } catch (e: Exception) {
             Assertions.fail<Any>(e.message, e)
-        }
+        } finally {
+            if (commandResult === null) {
+                Assertions.fail<Any>(
+                    "Within '$timeout' seconds the result of the command execution does not contain '$search'",
+                )
+            }
 
-        if (commandResult === null) {
-            Assertions.fail<Any>("Within '$timeout' seconds the result of the command execution does not contain '$search'")
-        }
+            CommandStorage.set(commandResult!!)
+            localCommand!!.attach(commandResult)
 
-        ThreadCommandResultProperty.set(commandResult!!)
-        this.attach(commandResult)
-        this.parse(commandResult)
+            val result = ConvertedResult(commandResult.content)
+            ConvertedResultStorage.set(result)
+            if (result.json !== null) {
+                localCommand.attach(result.json!!)
+            }
+        }
     }
 
-    open fun save(variable: String) {
-        super.save(this.getResult().content, variable)
-    }
-
-    open fun parseResult(templatePath: String) {
-        val result = this.getResult()
+    /**
+     * Run a command in the background.
+     *
+     * @param command String
+     */
+    open fun runInBackground(command: String) {
         try {
-            this.parse(result, TemplateParser(this.uri(templatePath)!!))
+            LocalCommand(command, ByteArrayOutputStream()).toBackground()
         } catch (e: Exception) {
             Assertions.fail<Any>(e.message, e)
         }
     }
 
-    open fun exitCode(code: Long) {
-        Assertions.assertThat(this.getResult().code).isEqualTo(code)
+    /**
+     * Saving the ID of a command running in the background to a variable.
+     *
+     * @param variable String
+     */
+    open fun saveBackgroundUuid(variable: String) {
+        val future: ThreadFuture? = ThreadFutureStorage.last()
+
+        Assertions.assertThat(future).`as`("Background command not running").isNotNull
+
+        baseSpec.save(future!!.uuid.toString(), variable)
     }
 
-    open fun check(content: DocString) {
-        Assertions.assertThat(this.getResult().content).isEqualTo(content.content)
-    }
+    /**
+     * Terminates a command that is running in the background.
+     *
+     * @param variable String?
+     */
+    open fun terminateBackground(variable: String?) {
+        val future: CommandThreadFuture? = if (variable === null) {
+            ThreadFutureStorage.last()
+        } else {
+            ThreadFutureStorage.get(variable)
+        } as CommandThreadFuture?
 
-    protected fun inBackground(command: Command) {
-        val pool: ExecutorService = ThreadPoolProperty.create()
+        Assertions.assertThat(future).`as`("Background command not running").isNotNull
 
-        val future = pool.submit {
-            while (!command.exited()) {
-                command.safeRead()
+        var commandResult: CommandResult? = null
+
+        try {
+            future!!.terminate()
+
+            commandResult = CommandResult(
+                future.command.exitCode(),
+                future.command.read(),
+            )
+        } catch (e: Exception) {
+            Assertions.fail<Any>(e.message, e)
+        } finally {
+            ThreadFutureStorage.remove(future!!.uuid.toString())
+
+            if (commandResult !== null) {
+                CommandStorage.set(commandResult)
+                future.command.attach(commandResult)
+
+                val result = ConvertedResult(commandResult.content)
+                ConvertedResultStorage.set(result)
+                if (result.json !== null) {
+                    future.command.attach(result.json!!)
+                }
             }
         }
-
-        val uuid = UUID.randomUUID()
-        ThreadFutureProperty.add(uuid.toString(), CommandThreadFuture(uuid, future, command))
     }
 
-    protected fun attach(result: CommandResult) {
-        Allure.addAttachment("command.json", "application/json", Gson().toJson(result).toString())
-    }
-
-    protected fun parse(result: CommandResult, parser: Parser? = null) {
-        val contentResult = Result(result.content, parser)
-        if (contentResult.json === null) {
-            return
-        }
-
-        ThreadContentProperty.set(contentResult)
-
-        Allure.addAttachment("parsed.json", "application/json", contentResult.json.toString())
-    }
-
-    private fun getResult(): CommandResult {
-        val commandResult = ThreadCommandResultProperty.get()
+    /**
+     * Exit code check.
+     *
+     * @param code Long
+     */
+    open fun exitCode(code: Long) {
+        val commandResult = CommandStorage.get()
 
         if (commandResult === null) {
             Assertions.fail<Any>("The result of the command execution was not found")
         }
 
-        return commandResult!!
+        Assertions.assertThat(commandResult!!.code).isEqualTo(code)
     }
 }

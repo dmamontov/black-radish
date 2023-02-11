@@ -1,12 +1,7 @@
 # language: en
 
 @ignore
-Feature: Example of an included file
+Feature: Included scenarios
 
-  Scenario: Included scenario
-    Given i save 'include' in variable 'ONE'
-
-  Scenario: Included scenario with a nested scenario
-    Given i include scenario 'Included scenario'
-    Then '${ONE}' is 'include'
-    Then i save 'depth' in variable 'ONE'
+  Scenario: An example of creating a variable
+    Given i save '3' in variable 'VAR'

@@ -34,7 +34,7 @@ abstract class WordSpec : Logged, FilesystemSpec() {
         FileAssert
             .assertThat(file)
             .isMimeTypeEquals(
-                "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             )
 
         try {

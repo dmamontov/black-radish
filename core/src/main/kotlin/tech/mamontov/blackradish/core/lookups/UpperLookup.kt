@@ -4,8 +4,19 @@ import org.apache.commons.text.lookup.StringLookup
 import tech.mamontov.blackradish.core.interfaces.Logged
 import java.util.Locale
 
+/**
+ * Uppercase lookup for replacement
+ *
+ * @author Dmitry Mamontov
+ */
 class UpperLookup : Logged, StringLookup {
-    override fun lookup(key: String): String {
-        return key.uppercase(Locale.getDefault())
+    /**
+     * Value to uppercase
+     *
+     * @param value String
+     * @return String
+     */
+    override fun lookup(value: String): String {
+        return value.uppercase(Locale.getDefault())
     }
 }
