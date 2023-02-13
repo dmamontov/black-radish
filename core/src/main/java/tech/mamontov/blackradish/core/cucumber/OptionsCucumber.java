@@ -164,7 +164,7 @@ public class OptionsCucumber implements CucumberOptions {
     /**
      * Get object factory
      *
-     * @return Class<? extends ObjectFactory>
+     * @return Class
      */
     @Override
     public Class<? extends ObjectFactory> objectFactory() {
@@ -174,7 +174,7 @@ public class OptionsCucumber implements CucumberOptions {
     /**
      * Get annotation type
      *
-     * @return Class<? extends Annotation>
+     * @return Class
      */
     @Override
     public Class<? extends Annotation> annotationType() {
@@ -184,7 +184,7 @@ public class OptionsCucumber implements CucumberOptions {
     /**
      * Get packages list
      *
-     * @param clazz Class<? extends Annotation>
+     * @param clazz Class
      * @return List<String>
      */
     private List<String> getPackages(Class<? extends Annotation> clazz) {

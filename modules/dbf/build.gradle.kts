@@ -1,7 +1,3 @@
-plugins {
-    `java-library`
-}
-
 repositories {
     maven("https://nexus.nuiton.org/nexus/content/groups/public/")
 }

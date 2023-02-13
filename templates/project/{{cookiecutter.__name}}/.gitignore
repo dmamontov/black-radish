@@ -1,9 +1,6 @@
 .idea
 .gradle
-tmp
 target
 build
 runtime
 .DS_Store
-memory:
-secret-keys.gpg

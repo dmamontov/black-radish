@@ -1,7 +1,3 @@
-plugins {
-    `java-library`
-}
-
 dependencies {
     implementation(project(":core"))
     implementation("com.sshtools:maverick-synergy-client:3.0.10")

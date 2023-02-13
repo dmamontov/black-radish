@@ -1,7 +1,3 @@
-plugins {
-    `java-library`
-}
-
 dependencies {
     implementation(project(":core"))
     implementation("com.sshtools:forker-client:1.6.4")
