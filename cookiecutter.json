@@ -1,0 +1,4 @@
+{
+  "module_name": "Default",
+  "module": "{{ cookiecutter.module_name|lower|replace(' ', '-') }}"
+}
