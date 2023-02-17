@@ -15,5 +15,10 @@ os.rename(main + "/MainSpec.kt", mainWithPackage + "/MainSpec.kt")
 os.rename(test + "/MainTest.kt", testWithPackage + "/MainTest.kt")
 
 os.system('gradle wrapper')
-os.system('./gradlew download')
-os.system('./gradlew clean build')
+
+if os.name == 'nt':
+    os.system('gradlew.bat download')
+    os.system('gradlew.bat clean build')
+else:
+    os.system('./gradlew download')
+    os.system('./gradlew clean build')
